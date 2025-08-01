@@ -17,7 +17,7 @@ def build_auth_html_response(
     success: bool,
     additional_js: str = "",
     data: dict = None,
-    auto_close_ms: int = 3000
+    auto_close_ms: int = 5000
 ):
     """Generate a modular HTML response for auth callback"""
     data_js = ",\n".join([f"{k}: {json.dumps(v)}" for k, v in (data or {}).items()])
@@ -33,21 +33,39 @@ def build_auth_html_response(
             <h2>{heading}</h2>
             <p>{message}</p>
             <script>
-                try {{
-                    if (window.opener && !window.opener.closed) {{
-                        window.opener.postMessage({{
-                            type: '{post_message_type}',
-                            success: {str(success).lower()},
-                            {data_js}
-                        }}, '*');
+                let messagesSent = 0;
+                const maxRetries = 5;
+                
+                function sendMessage() {{
+                    try {{
+                        if (window.opener && !window.opener.closed) {{
+                            window.opener.postMessage({{
+                                type: '{post_message_type}',
+                                success: {str(success).lower()},
+                                {data_js}
+                            }}, '*');
+                            messagesSent++;
+                            console.log('Message sent, attempt:', messagesSent);
+                        }}
+                    }} catch (e) {{
+                        console.error('Could not communicate with parent window:', e);
                     }}
-                }} catch (e) {{
-                    console.error('Could not communicate with parent window:', e);
                 }}
+                
+                // Send message immediately and retry
+                sendMessage();
+                const retryInterval = setInterval(() => {{
+                    if (messagesSent < maxRetries) {{
+                        sendMessage();
+                    }} else {{
+                        clearInterval(retryInterval);
+                    }}
+                }}, 500);
 
                 {additional_js}
 
                 setTimeout(() => {{
+                    clearInterval(retryInterval);
                     try {{
                         window.close();
                     }} catch (e) {{

@@ -1,11 +1,11 @@
 from base_models import UserData, EmailGenerationParams, EmailSendRequest, LeadSearchRequest
-from typing import Optional, List, Dict,Tuple
+from typing import Optional, List, Dict,Tuple,Any
 import json
 import requests
 from dotenv import load_dotenv
 import os
 import logging
-
+import glob
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -14,107 +14,26 @@ logger = logging.getLogger(__name__)
 load_dotenv()
 CS_key=os.getenv("CS_API_KEY")
 
-SAMPLE_LEADS = [
-    {
-        "name": "John Smith",
-        "full_name": "John Smith",
-        "title": "Senior Software Engineer",
-        "email": "john.smith@techcorp.com",
-        "email_list": [
-            "john.smith@techcorp.com",
-            "j.smith@techcorp.com",
-            "john@techcorp.com"
-        ],
-        "organization": "TechCorp Inc",
-        "department": "Engineering",
-        "location": "San Francisco, CA",
-        "experience_years": "5+",
-        "skills": ["Python", "React", "AWS", "Docker"],
-        "linkedin_profile": "https://linkedin.com/in/johnsmith",
-        "phone": "+1-555-0123",
-        "bio": "Experienced software engineer with expertise in full-stack development and cloud technologies."
-    },
-    {
-        "name": "Sarah Johnson",
-        "full_name": "Sarah Johnson",
-        "title": "Product Manager",
-        "email": "sarah.johnson@techcorp.com",
-        "email_list": [
-            "sarah.johnson@techcorp.com",
-            "s.johnson@techcorp.com"
-        ],
-        "organization": "TechCorp Inc",
-        "department": "Product",
-        "location": "New York, NY",
-        "experience_years": "7+",
-        "skills": ["Product Strategy", "Agile", "Data Analysis", "UI/UX"],
-        "linkedin_profile": "https://linkedin.com/in/sarahjohnson",
-        "phone": "+1-555-0124",
-        "bio": "Product manager with a track record of launching successful digital products."
-    },
-    {
-        "name": "Michael Chen",
-        "full_name": "Michael Chen",
-        "title": "DevOps Engineer",
-        "email": "michael.chen@techcorp.com",
-        "email_list": [
-            "michael.chen@techcorp.com",
-            "m.chen@techcorp.com",
-            "mike.chen@techcorp.com"
-        ],
-        "organization": "TechCorp Inc",
-        "department": "Infrastructure",
-        "location": "Seattle, WA",
-        "experience_years": "4+",
-        "skills": ["Kubernetes", "Terraform", "CI/CD", "Monitoring"],
-        "linkedin_profile": "https://linkedin.com/in/michaelchen",
-        "phone": "+1-555-0125",
-        "bio": "DevOps engineer specializing in cloud infrastructure and automation."
-    },
-    {
-        "name": "Emily Davis",
-        "full_name": "Emily Davis",
-        "title": "UX Designer",
-        "email": "emily.davis@designstudio.com",
-        "email_list": [
-            "emily.davis@designstudio.com",
-            "e.davis@designstudio.com"
-        ],
-        "organization": "Design Studio",
-        "department": "Design",
-        "location": "Austin, TX",
-        "experience_years": "3+",
-        "skills": ["Figma", "User Research", "Prototyping", "Design Systems"],
-        "linkedin_profile": "https://linkedin.com/in/emilydavis",
-        "phone": "+1-555-0126",
-        "bio": "Creative UX designer passionate about creating intuitive user experiences."
-    },
-    {
-        "name": "David Wilson",
-        "full_name": "David Wilson",
-        "title": "Data Scientist",
-        "email": "david.wilson@datatech.com",
-        "email_list": [
-            "david.wilson@datatech.com",
-            "d.wilson@datatech.com",
-            "dave@datatech.com"
-        ],
-        "organization": "DataTech Solutions",
-        "department": "Analytics",
-        "location": "Boston, MA",
-        "experience_years": "6+",
-        "skills": ["Python", "Machine Learning", "SQL", "Tableau"],
-        "linkedin_profile": "https://linkedin.com/in/davidwilson",
-        "phone": "+1-555-0127",
-        "bio": "Data scientist with expertise in predictive analytics and machine learning."
-    }
-]
-
+def fetch_sample_leads(path: str = "V:/BASAL/MCP_servers/core_signal/LEAD_MULTI_SOURCE/"):
+    leads_paths = glob.glob(f"{path}/**/*response.json", recursive=True)
+    print(f"Found {len(leads_paths)} lead files.")
+    
+    sample_leads = []
+    for lead_path in leads_paths:
+        try:
+            with open(lead_path, 'r', encoding='utf-8') as f:
+                lead_data = json.load(f)  # Read and parse the JSON content
+                sample_leads.append(lead_data)
+        except Exception as e:
+            print(f"❌ Error reading {lead_path}: {e}")
+    
+    return sample_leads
+        
 
 class LeadFinder:
-    def __init__(self, leads: Optional[List[Dict]] = None):
-        self.leads = leads or SAMPLE_LEADS
-
+    def __init__(self, leads: Optional[List[Dict]] = None,test:bool=False):
+        self.leads = leads or fetch_sample_leads()
+        self.test=test
 
     def generate_dynamic_icp_query(self, request: LeadSearchRequest):
         """
@@ -510,15 +429,28 @@ class LeadFinder:
             return None, 0
 
 
-    def fetch_leads(self, request: LeadSearchRequest) -> Optional[str]:
+    def fetch_leads(self, request: LeadSearchRequest, limit: int = 3) -> Optional[str]:
         """
-        Fetch lead details from CoreSignal API with comprehens
-        ive error handling.
+        Fetch lead details from CoreSignal API with comprehensive error handling.
+        
+        Args:
+            request: LeadSearchRequest object
+            limit: Number of leads to return (default: 3)
         
         Returns:
-            Lead data as string or None on error
+            Lead data as JSON string or None on error
         """
         try:
+            # If in test mode, return sample leads immediately
+            if self.test:
+                logger.info(f"Test mode enabled - returning up to {limit} sample leads")
+                if self.leads:
+                    # Return up to 'limit' number of leads
+                    selected_leads = self.leads[:limit]
+                    return json.dumps(selected_leads)
+                return None
+                
+            # Production mode - fetch from API
             leads_list, num_leads = self.fetch_IDs(request=request)
             
             if leads_list is None or num_leads == 0:
@@ -529,120 +461,279 @@ class LeadFinder:
                 logger.warning("Empty leads list returned")
                 return None
 
-            if not leads_list[0]:
-                logger.error("First lead ID is empty or invalid")
-                return None
-
-            url = f"https://api.coresignal.com/cdapi/v2/employee_multi_source/collect/{leads_list[0]}"
-
-            headers = {
-                'Content-Type': 'application/json',
-                'apikey': CS_key
-            }
-
-            try:
-                enriched_response = requests.get(
-                    url, 
-                    headers=headers,
-                    timeout=30 
-                )
-                enriched_response.raise_for_status()  
-                
-            except requests.exceptions.Timeout:
-                logger.error("Request timed out while fetching lead details")
-                return None
-            except requests.exceptions.ConnectionError:
-                logger.error("Connection error while fetching lead details")
-                return None
-            except requests.exceptions.HTTPError as e:
-                logger.error(f"HTTP error while fetching lead details: {e}")
-                return None
-            except requests.exceptions.RequestException as e:
-                logger.error(f"Request error while fetching lead details: {e}")
-                return None
-
-            try:
-                response_text = enriched_response.text
-                if not response_text:
-                    logger.warning("Empty response received")
-                    return None
+            # Collect multiple leads based on limit
+            collected_leads = []
+            max_leads_to_fetch = min(limit, len(leads_list), num_leads)
+            
+            for i in range(max_leads_to_fetch):
+                if not leads_list[i]:
+                    logger.warning(f"Lead ID at index {i} is empty or invalid")
+                    continue
                     
-                json.loads(response_text)
-                
-                print("\nLead Result: \n")
-                self.leads = enriched_response
-                return response_text
-                
-            except json.JSONDecodeError as e:
-                logger.error(f"Invalid JSON in lead response: {e}")
-                return None
-            except Exception as e:
-                logger.error(f"Error processing lead response: {e}")
+                url = f"https://api.coresignal.com/cdapi/v2/employee_multi_source/collect/{leads_list[i]}"
+                headers = {
+                    'Content-Type': 'application/json',
+                    'apikey': CS_key
+                }
+
+                try:
+                    enriched_response = requests.get(url, headers=headers, timeout=30)
+                    enriched_response.raise_for_status()
+                    
+                    response_text = enriched_response.text
+                    if response_text:
+                        # Validate JSON and add to collection
+                        lead_data = json.loads(response_text)
+                        collected_leads.append(lead_data)
+                        
+                except Exception as e:
+                    logger.error(f"Error fetching lead {i}: {e}")
+                    continue
+            
+            if collected_leads:
+                print(f"\nCollected {len(collected_leads)} leads\n")
+                return json.dumps(collected_leads)
+            else:
+                logger.warning("No leads were successfully collected")
                 return None
 
         except Exception as e:
             logger.error(f"Unexpected error in Fetch_Leads: {e}")
+            # Return sample leads if in test mode, None otherwise
+            if self.test and self.leads:
+                logger.info("Returning sample leads due to error in test mode")
+                selected_leads = self.leads[:limit] if limit else self.leads
+                return json.dumps(selected_leads)
+            return None
+
+    def filter_profiles(self, 
+                        leads_data: Optional[str] = None,
+                        make_keys_descriptive: bool = True,
+                        limit_experience_entries: Optional[int] = 3,
+                        limit_education_entries: Optional[int] = 3) -> Optional[List[Dict[str, Any]]]:
+        """
+        Filter profiles for all leads and return as list of filtered profile objects.
+        Uses basic filtering which includes: basic info, current role, experience, 
+        education, skills, contact, and location.
+        
+        Args:
+            leads_data: JSON string of leads data (if None, uses self.leads or fetches from API)
+            make_keys_descriptive: Whether to use descriptive keys instead of technical ones
+            limit_experience_entries: Limit number of experience entries (default: 3)
+            limit_education_entries: Limit number of education entries (default: 3)
+        
+        Returns:
+            List of filtered profile dictionaries or None on error
+        """
+        try:
+            # Get leads data
+            if leads_data:
+                # If leads_data is provided as JSON string, parse it
+                if isinstance(leads_data, str):
+                    all_leads = json.loads(leads_data)
+                else:
+                    all_leads = leads_data
+            elif self.test and self.leads:
+                # Use sample leads in test mode
+                all_leads = self.leads
+            else:
+                logger.warning("No leads data available for filtering")
+                return None
+            
+            # Ensure all_leads is a list
+            if not isinstance(all_leads, list):
+                all_leads = [all_leads]
+            
+            filtered_profiles = []
+            
+            # Process each lead
+            for i, profile_data in enumerate(all_leads):
+                try:
+                    filtered_data = {}
+                    
+                    # Basic Information
+                    basic_key = "personal_information" if make_keys_descriptive else "basic_info"
+                    filtered_data[basic_key] = {
+                        "full_name": profile_data.get("full_name"),
+                        "first_name": profile_data.get("first_name"),
+                        "last_name": profile_data.get("last_name"),
+                        "linkedin_url": profile_data.get("linkedin_url"),
+                        "professional_headline": profile_data.get("headline"),
+                        "professional_summary": profile_data.get("summary"),
+                        "primary_professional_email": profile_data.get("primary_professional_email"),
+                        "picture_url":profile_data.get("picture_url")
+                    }
+
+                    # Location
+                    filtered_data[basic_key]["location"] = {
+                        "full_location": profile_data.get("location_full"),
+                        "country": profile_data.get("location_country"),
+                        "regions": profile_data.get("location_regions", [])
+                    }
+                    
+                    # Contact Information
+                    contact_key = "contact_information" if make_keys_descriptive else "contact"
+                    filtered_data[contact_key] = {
+                        "primary_email": profile_data.get("primary_professional_email"),
+                        "professional_network_url": profile_data.get("professional_network_url"),
+                        "services_offered": profile_data.get("services")
+                    }
+                    
+                    # If the status is 'matched_pattern', include all matching emails
+                    if profile_data.get("primary_professional_email_status") == "matched_pattern":
+                        email_collection = profile_data.get("professional_emails_collection", [])
+                        filtered_data[contact_key]["matched_emails"] = [
+                            d.get("professional_email")
+                            for d in email_collection
+                            if d.get("professional_email")
+                        ]
+
+                    # Current Professional Status
+                    current_key = "current_position" if make_keys_descriptive else "current_role"
+                    filtered_data[current_key] = {
+                        "title": profile_data.get("active_experience_title"),
+                        "description": profile_data.get("active_experience_description"),
+                        "department": profile_data.get("active_experience_department"),
+                        "management_level": profile_data.get("active_experience_management_level"),
+                        "is_decision_maker": profile_data.get("is_decision_maker", False),
+                        "total_experience_months": profile_data.get("total_experience_duration_months"),
+                        "total_experience_years": (profile_data.get("total_experience_duration_months")//12),# Self made
+                        "total_experience_remaining_months": (profile_data.get("total_experience_duration_months")%12)# Self made
+
+
+                    }
+                    
+                    # Professional Experience
+                    if "experience" in profile_data:
+                        exp_key = "work_experience" if make_keys_descriptive else "experience"
+                        experiences = profile_data["experience"]
+                        
+                        if limit_experience_entries:
+                            experiences = experiences[:limit_experience_entries]
+                        
+                        filtered_data[exp_key] = []
+                        for exp in experiences:
+                            formatted_exp = {
+                                "position_title": exp.get("position_title"),
+                                "company_name": exp.get("company_name"),
+                                "company_industry": exp.get("company_industry"),
+                                "company_size": exp.get("company_size_range"),
+                                "location": exp.get("location"),
+                                "duration": f"{exp.get('date_from', '')} - {exp.get('date_to', 'Present')}",
+                                "duration_months": exp.get("duration_months"),
+                                "department": exp.get("department"),
+                                "management_level": exp.get("management_level"),
+                                "is_current": bool(exp.get("active_experience", False))
+                            }
+                            filtered_data[exp_key].append(formatted_exp)
+                    
+                    # Skills and Expertise
+                    skills_key = "skills_and_expertise" if make_keys_descriptive else "skills"
+                    filtered_data[skills_key] = {
+                        "inferred_skills": profile_data.get("inferred_skills", []),
+                        "interests": profile_data.get("interests", [])
+                    }
+                    
+                    # Education
+                    if "education" in profile_data:
+                        edu_key = "educational_background" if make_keys_descriptive else "education"
+                        education = profile_data["education"]
+                        
+                        if limit_education_entries:
+                            education = education[:limit_education_entries]
+                        
+                        filtered_data[edu_key] = []
+                        for edu in education:
+                            formatted_edu = {
+                                "degree": edu.get("degree"),
+                                "institution": edu.get("institution_name"),
+                                "location": edu.get("institution_full_address"),
+                                "duration": f"{edu.get('date_from_year', '')} - {edu.get('date_to_year', '')}",
+                                "description": edu.get("description"),
+                                "activities": edu.get("activities_and_societies")
+                            }
+                            filtered_data[edu_key].append(formatted_edu)
+                    
+                    # Remove empty values and add profile index for reference
+                    cleaned_profile = self.remove_empty_values(filtered_data)
+                    cleaned_profile["profile_index"] = i + 1  # Add index for reference
+                    
+                    filtered_profiles.append(cleaned_profile)
+                    
+                except Exception as e:
+                    logger.error(f"Error filtering profile {i}: {e}")
+                    continue
+            
+            if filtered_profiles:
+                logger.info(f"Successfully filtered {len(filtered_profiles)} profiles")
+                return filtered_profiles
+            else:
+                logger.warning("No profiles were successfully filtered")
+                return None
+                
+        except Exception as e:
+            logger.error(f"Error in filter_profiles: {e}")
             return None
 
 
-
-    def filter_leads(self,request:LeadSearchRequest) -> List[Dict]:
-        filtered_leads = []
+    def get_filtered_leads(self, 
+                    request: LeadSearchRequest, 
+                    limit: int = 5) -> Optional[List[Dict[str, Any]]]:
+        """
+        Convenience method to fetch leads and filter them in one step.
         
-        for lead in self.leads:
-            # Check company name matches
-            if request.company_names:
-                lead_org = lead.get("organization", "").lower()
-                if not any(company.lower() in lead_org for company in request.company_names):
-                    continue
+        Args:
+            request: LeadSearchRequest object
+            limit: Number of leads to fetch and filter
+        
+        Returns:
+            List of filtered lead profile dictionaries or None on error
+        """
+        try:
+            # Step 1: Fetch leads
+            raw_leads = self.fetch_leads(request, limit=limit)
             
-            # Check job title matches
-            if request.job_titles:
-                lead_title = lead.get("title", "").lower()
-                if not any(title.lower() in lead_title for title in request.job_titles):
-                    continue
+            if not raw_leads:
+                logger.warning("No leads fetched")
+                return None
             
-            # Check department matches
-            if request.departments:
-                lead_dept = lead.get("department", "").lower()
-                if not any(dept.lower() in lead_dept for dept in request.departments):
-                    continue
+            # Step 2: Filter profiles
+            filtered_leads = self.filter_profiles(leads_data=raw_leads)
             
-            # Check skills/technologies matches
-            if request.technologies:
-                lead_skills = [skill.lower() for skill in lead.get("skills", [])]
-                if not any(tech.lower() in lead_skills for tech in request.technologies):
-                    continue
+            return filtered_leads
             
-            # Check location matches
-            if request.countries or request.states or request.cities:
-                lead_location = lead.get("location", "").lower()
-                location_match = False
-                
-                if request.countries:
-                    location_match = any(country.lower() in lead_location for country in request.countries)
-                
-                if not location_match and request.states:
-                    location_match = any(state.lower() in lead_location for state in request.states)
-                
-                if not location_match and request.cities:
-                    location_match = any(city.lower() in lead_location for city in request.cities)
-                
-                if not location_match:
-                    continue
-            
-            filtered_leads.append(lead)
+        except Exception as e:
+            logger.error(f"Error in get_filtered_leads: {e}")
+            return None
 
-        # Fallback: return first 3 leads if no filters applied
-        if not filtered_leads and not any([
-            request.company_names,
-            request.job_titles,
-            request.departments,
-            request.technologies,
-            request.countries,
-            request.states,
-            request.cities
-        ]):
-            return self.leads[:3]
-            
-        return filtered_leads
+
+    @staticmethod
+    def remove_empty_values(data: Dict[str, Any]) -> Dict[str, Any]:
+        """Recursively remove keys with empty, None, [], or {} values."""
+        if not isinstance(data, dict):
+            return data
+        
+        cleaned = {}
+        for k, v in data.items():
+            if v in (None, "", [], {}):
+                continue
+            elif isinstance(v, dict):
+                cleaned_dict = LeadFinder.remove_empty_values(v)
+                if cleaned_dict:  # Only add if not empty after cleaning
+                    cleaned[k] = cleaned_dict
+            elif isinstance(v, list):
+                # Clean list items if they are dicts
+                cleaned_list = []
+                for item in v:
+                    if isinstance(item, dict):
+                        cleaned_item = LeadFinder.remove_empty_values(item)
+                        if cleaned_item:
+                            cleaned_list.append(cleaned_item)
+                    elif item not in (None, "", [], {}):
+                        cleaned_list.append(item)
+                if cleaned_list:
+                    cleaned[k] = cleaned_list
+            else:
+                cleaned[k] = v
+        
+        return cleaned
