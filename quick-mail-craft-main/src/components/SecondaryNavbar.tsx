@@ -1,0 +1,172 @@
+
+import React, { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Plus, Edit3, X, Check } from 'lucide-react';
+
+interface EmailSection {
+  id: string;
+  name: string;
+  emailData: any;
+}
+
+interface SecondaryNavbarProps {
+  emailSections: EmailSection[];
+  activeSection: string;
+  onSectionChange: (id: string) => void;
+  onAddSection: () => void;
+  onUpdateSectionName: (id: string, name: string) => void;
+  onDeleteSection: (id: string) => void;
+  editingName: string | null;
+  onEditName: (id: string | null) => void;
+}
+
+const SecondaryNavbar = ({
+  emailSections,
+  activeSection,
+  onSectionChange,
+  onAddSection,
+  onUpdateSectionName,
+  onDeleteSection,
+  editingName,
+  onEditName
+}: SecondaryNavbarProps) => {
+  const [editingValue, setEditingValue] = useState('');
+
+  const handleEditStart = (section: EmailSection) => {
+    setEditingValue(section.name);
+    onEditName(section.id);
+  };
+
+  const handleEditSave = (id: string) => {
+    if (editingValue.trim()) {
+      onUpdateSectionName(id, editingValue.trim());
+    }
+    onEditName(null);
+    setEditingValue('');
+  };
+
+  const handleEditCancel = () => {
+    onEditName(null);
+    setEditingValue('');
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent, id: string) => {
+    if (e.key === 'Enter') {
+      handleEditSave(id);
+    }
+    if (e.key === 'Escape') {
+      handleEditCancel();
+    }
+  };
+
+  return (
+    <div className="bg-gray-50 border-b border-gray-200">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="py-4">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-700">Email Campaign Sections</h3>
+            <div className="text-sm text-gray-500">
+              Currently editing: <span className="font-medium text-blue-600">
+                {emailSections.find(s => s.id === activeSection)?.name || 'Main Email'}
+              </span>
+            </div>
+          </div>
+          
+          <div className="flex flex-wrap items-center gap-3">
+            {emailSections.map((section, index) => (
+              <div 
+                key={section.id}
+                className={`relative flex items-center gap-2 px-4 py-2 rounded-lg border-2 transition-all duration-200 ${
+                  activeSection === section.id
+                    ? 'bg-blue-500 text-white border-blue-500 shadow-md'
+                    : 'bg-white text-gray-700 border-gray-200 hover:border-blue-300 hover:shadow-sm'
+                }`}
+              >
+                {editingName === section.id ? (
+                  <div className="flex items-center gap-2">
+                    <Input
+                      value={editingValue}
+                      onChange={(e) => setEditingValue(e.target.value)}
+                      className="h-7 min-w-[120px] text-sm bg-white text-gray-900 border-gray-300"
+                      onKeyDown={(e) => handleKeyDown(e, section.id)}
+                      autoFocus
+                      placeholder="Section name..."
+                    />
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => handleEditSave(section.id)}
+                      className="h-6 w-6 p-0 hover:bg-white/20"
+                    >
+                      <Check className="w-3 h-3" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={handleEditCancel}
+                      className="h-6 w-6 p-0 hover:bg-white/20"
+                    >
+                      <X className="w-3 h-3" />
+                    </Button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => onSectionChange(section.id)}
+                        className="font-medium text-left"
+                      >
+                        {section.name}
+                      </button>
+                      {index === 0 && (
+                        <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                          Main
+                        </span>
+                      )}
+                    </div>
+                    
+                    <div className="flex items-center gap-1">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => handleEditStart(section)}
+                        className="h-6 w-6 p-0 hover:bg-white/20"
+                        title="Edit section name"
+                      >
+                        <Edit3 className="w-3 h-3" />
+                      </Button>
+                      {emailSections.length > 1 && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => onDeleteSection(section.id)}
+                          className="h-6 w-6 p-0 hover:bg-red-500/20 text-red-500"
+                          title="Delete section"
+                        >
+                          <X className="w-3 h-3" />
+                        </Button>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+            ))}
+            
+            <Button
+              onClick={onAddSection}
+              variant="outline"
+              size="sm"
+              className="flex items-center gap-2 px-4 py-2 border-dashed border-2 border-blue-300 text-blue-600 hover:bg-blue-50 hover:border-blue-400 transition-all duration-200"
+            >
+              <Plus className="w-4 h-4" />
+              Add Section
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default SecondaryNavbar;

@@ -5,6 +5,7 @@ from typing import Optional
 import os
 import json
 import secrets
+import time
 from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
 from google.auth.transport.requests import Request as GoogleRequest
@@ -82,6 +83,16 @@ async def root():
 @app.post("/api/authenticate-gmail")
 async def start_gmail_auth(request: Request):
     try:
+        # Get auth state from request body
+        body = await request.json()
+        frontend_auth_state = body.get('auth_state')
+        
+        if not frontend_auth_state:
+            return JSONResponse(
+                status_code=400,
+                content={"error": "Missing auth_state parameter"}
+            )
+        
         if not os.path.exists(CREDENTIALS_FILE):
             return JSONResponse(
                 status_code=500,
@@ -96,9 +107,9 @@ async def start_gmail_auth(request: Request):
             redirect_uri=redirect_uri
         )
 
-        # Generate state and store in Redis instead of in-memory dict
-        state = secrets.token_urlsafe(32)
-        if not RedisManager.store_oauth_state(state, expiry_minutes=10):
+        # Use frontend auth state as OAuth state parameter
+        # Also store it in Redis to track the auth flow
+        if not RedisManager.store_oauth_state(frontend_auth_state, expiry_minutes=10):
             return JSONResponse(
                 status_code=500,
                 content={"error": "Failed to store OAuth state"}
@@ -107,11 +118,12 @@ async def start_gmail_auth(request: Request):
         authorization_url, _ = flow.authorization_url(
             access_type='offline',
             include_granted_scopes='true',
-            state=state,
+            state=frontend_auth_state,  # Use frontend-provided state
             prompt='consent'
         )
 
         print("🔐 Redirect URI used for auth:", redirect_uri)   
+        print("🔗 Frontend auth state:", frontend_auth_state)
         print("🔗 Full Authorization URL:", authorization_url)
 
         return {"authorization_url": authorization_url}
@@ -181,32 +193,68 @@ async def auth_callback(request: Request):
         name = profile.get('names', [{}])[0].get('displayName', 'Unknown')
         email = profile.get('emailAddresses', [{}])[0].get('value', 'Unknown')
 
-        session_id = str(uuid.uuid4())
+        # Enhanced session ID generation for better uniqueness
+        session_id = f"{uuid.uuid4()}_{int(time.time())}_{secrets.token_urlsafe(8)}"
         auth_data = {
             'name': name,
             'email': email,
             'credentials': json.loads(creds.to_json())
         }
 
+        # Store session data in Redis
         if not RedisManager.store_session_data(session_id, auth_data, expiry_hours=24):
             raise Exception("Failed to store session data")
 
+        # IMPORTANT: Store auth completion data for polling using auth state
+        auth_completion_data = {
+            'session_id': session_id,
+            'name': name,
+            'email': email,
+            'authenticated': True,
+            'completed_at': datetime.now().isoformat()
+        }
+        
+        auth_completion_key = f"auth_complete:{state}"
+        if not RedisManager.store_session_data(auth_completion_key, auth_completion_data, expiry_hours=1):
+            print(f"Warning: Failed to store auth completion data for state {state}")
+
         print(f"✅ Gmail authentication successful for: {name} ({email})")
         print(f"📝 Session ID created: {session_id}")
+        print(f"🔗 Auth state completion stored: {state}")
 
-        return build_auth_html_response(
-            title="Authentication Successful",
-            heading="Authentication Successful!",
-            message="Please complete your profile to continue.",
-            post_message_type="GMAIL_AUTH_SUCCESS",
-            success=True,
-            data={
-                "requires_profile": True,
-                "session_id": session_id,
-                "user_info": {"name": name, "email": email}
-            },
-            auto_close_ms=2000
-        )
+        # Return simple success page - no postMessage needed!
+        return HTMLResponse(f"""
+        <!DOCTYPE html>
+        <html>
+            <head>
+                <title>Authentication Successful</title>
+                <meta charset="utf-8">
+                <style>
+                    body {{ font-family: Arial, sans-serif; text-align: center; padding: 50px; }}
+                    .success {{ color: #28a745; }}
+                    .message {{ margin: 20px 0; }}
+                </style>
+            </head>
+            <body>
+                <h2 class="success">✅ Authentication Successful!</h2>
+                <p class="message">Your Gmail account has been connected successfully.</p>
+                <p>You can close this window and return to the application.</p>
+                <script>
+                    // Auto-close after 3 seconds
+                    setTimeout(() => {{
+                        try {{
+                            window.close();
+                        }} catch (e) {{
+                            console.log('Could not auto-close window');
+                        }}
+                    }}, 3000);
+                </script>
+            </body>
+        </html>
+        """, headers={
+            "Cross-Origin-Opener-Policy": "same-origin-allow-popups",
+            "Cross-Origin-Embedder-Policy": "unsafe-none"
+        })
 
     except Exception as e:
         return build_auth_html_response(
@@ -246,6 +294,7 @@ async def check_auth(request: Request):
                         return JSONResponse(content={
                             "authenticated": True,
                             "profile_complete": True,
+                            "session_id": session_id,  # Include session_id in response
                             "user_info": {
                                 "name": user_info['name'],
                                 "email": user_info['email'],
@@ -267,7 +316,8 @@ async def check_auth(request: Request):
 
                             return JSONResponse(content={
                                 "authenticated": True,
-                                "profile_complete": True,
+                                "profile_complete": True,  
+                                "session_id": session_id,  # Include session_id in response
                                 "user_info": {
                                     "name": user_info['name'],
                                     "email": user_info['email'],
@@ -312,27 +362,8 @@ async def check_auth(request: Request):
                 })
 
         
-        # If no session_id provided, check if any sessions exist in Redis
-        elif not session_id and RedisManager.client:
-            session_keys = RedisManager.get_all_session_keys()
-            if session_keys:
-                # Get the first available session
-                first_session_key = session_keys[0]
-                first_session_id = first_session_key.replace("session:", "")
-                auth_data = RedisManager.get_session_data(first_session_id)
-                if auth_data:
-                    print(f"DEBUG: Using first available session from Redis: {first_session_id}")
-                    return JSONResponse(content={
-                        "authenticated": True,
-                        "profile_complete": False,
-                        "requires_profile": True,
-                        "message": "Gmail authentication successful, profile completion required",
-                        "session_id": first_session_id,
-                        "user_info": {
-                            "name": auth_data['name'],
-                            "email": auth_data['email']
-                        }
-                    })
+        # SECURITY: Never return other users' sessions
+        # If no session_id provided, user must authenticate first
 
         print(f"No authentication found - token_file: {token_file}, session_id: {session_id}")
 
@@ -348,6 +379,48 @@ async def check_auth(request: Request):
             "authenticated": False,
             "profile_complete": False,
             "error": str(e)
+        })
+
+
+@app.get("/api/auth-status/{auth_state_id}")
+async def check_auth_status_by_state(auth_state_id: str):
+    """Check authentication status using auth state ID for polling"""
+    try:
+        print(f"DEBUG: Checking auth status for state: {auth_state_id}")
+        
+        # Check if auth state exists and get associated session data
+        auth_completion_key = f"auth_complete:{auth_state_id}"
+        session_data = RedisManager.get_session_data(auth_completion_key)
+        
+        if session_data:
+            print(f"DEBUG: Found completed auth for state {auth_state_id}")
+            
+            # Return the session data and clean up the temporary auth completion record  
+            RedisManager.delete_session_data(auth_completion_key)
+            
+            return JSONResponse(content={
+                "authenticated": True,
+                "profile_complete": False,
+                "requires_profile": True,
+                "session_id": session_data.get('session_id'),
+                "message": "Gmail authentication successful, profile completion required",
+                "user_info": {
+                    "name": session_data.get('name'),
+                    "email": session_data.get('email')
+                }
+            })
+        else:
+            # Auth not completed yet
+            print(f"DEBUG: Auth not completed yet for state {auth_state_id}")
+            return JSONResponse(
+                status_code=404,
+                content={"message": "Authentication not completed yet"}
+            )
+            
+    except Exception as e:
+        print(f"Error checking auth status: {e}")
+        return JSONResponse(status_code=500, content={
+            "error": f"Failed to check auth status: {str(e)}"
         })
 
 
@@ -542,21 +615,18 @@ async def logout(request: Request):
         if session_id:
             RedisManager.delete_session_data(session_id)
         
-        # Clear all sessions from Redis (optional)
-        if RedisManager.client:
-            session_keys = RedisManager.get_all_session_keys()
-            for key in session_keys:
-                RedisManager.client.delete(key)
-            
-            # Also clear any remaining OAuth states
-            oauth_keys = RedisManager.get_all_oauth_state_keys()
-            for key in oauth_keys:
-                RedisManager.client.delete(key)
+        # Only remove the current user's token file (if it exists)
+        if session_id:
+            # Find and remove only the current user's token file
+            token_file = user_manager.get_user_token_file(session_id)
+            if token_file and os.path.exists(token_file):
+                os.remove(token_file)
+                print(f"🗑️ Removed token file: {token_file}")
+            else:
+                print(f"No token file found for session: {session_id}")
         
-        # Remove permanent token files (optional)
-        token_files = glob.glob(os.path.join(TOKENS_FOLDER, "*.json"))
-        for token_file in token_files:
-            os.remove(token_file)
+        # Note: We don't clear ALL Redis sessions or ALL token files
+        # Each user should only logout their own session
         
         return {"message": "Logged out successfully", "success": True}
     except Exception as e:
