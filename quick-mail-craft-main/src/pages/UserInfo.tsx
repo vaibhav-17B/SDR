@@ -56,8 +56,8 @@ const UserInfo = ({ onAuthChange }: UserInfoProps) => {
         if (authData.isAuthenticated && !authData.profileComplete) {
           setShowProfileDialog(true);
         } else if (authData.isAuthenticated && authData.profileComplete) {
-          // User is fully authenticated, redirect to Find Leads
-          navigate('/find-leads');
+          // User is fully authenticated, redirect to Home
+          navigate('/');
         }
       } else {
         clearSession();
@@ -97,7 +97,7 @@ const UserInfo = ({ onAuthChange }: UserInfoProps) => {
     if (needsProfile) {
       setShowProfileDialog(true);
     } else if (authenticated && !needsProfile) {
-      navigate('/find-leads');
+      navigate('/');
     }
   };
 
@@ -158,7 +158,7 @@ const UserInfo = ({ onAuthChange }: UserInfoProps) => {
       toast.success('Profile setup complete!');
       setIsAuthenticated(true);
       setShowProfileDialog(false);
-      navigate('/find-leads');
+      navigate('/');
     } catch (error: any) {
       console.log('######DEBUG##### Profile Submit Error:', error);
       toast.error(error.message || 'Profile setup failed');
@@ -182,9 +182,9 @@ const UserInfo = ({ onAuthChange }: UserInfoProps) => {
           <GmailAuth onAuthChange={handleAuthChange} />
           
           {isAuthenticated && !showProfileDialog && (
-            <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
-              <p className="text-green-800 text-sm">
-                ✅ Gmail connected successfully! Redirecting to Find Leads...
+            <div className="mt-4 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+              <p className="text-gray-800 text-sm">
+                Gmail connected successfully! Redirecting to Home...
               </p>
             </div>
           )}
@@ -196,6 +196,12 @@ const UserInfo = ({ onAuthChange }: UserInfoProps) => {
           <DialogHeader>
             <DialogTitle>Complete Your Profile</DialogTitle>
           </DialogHeader>
+          {/* Show message if user was previously deleted */}
+          <div className="mb-4 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+            <p className="text-gray-800 text-sm">
+              Please complete your profile information to continue using the application.
+            </p>
+          </div>
           <form onSubmit={handleProfileSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="company_name">Company Name</Label>

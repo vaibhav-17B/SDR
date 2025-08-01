@@ -135,7 +135,12 @@ const GmailAuth = ({ onAuthChange }: GmailAuthProps) => {
           authWindow.close();
         }
         
-        toast.success('Gmail connected successfully!');
+        // Handle deleted user scenario
+        if (authResult.wasDeleted) {
+          toast.success('Welcome back! Please complete your profile setup again.');
+        } else {
+          toast.success('Gmail connected successfully!');
+        }
         onAuthChange(
           true, 
           authResult.userEmail, 

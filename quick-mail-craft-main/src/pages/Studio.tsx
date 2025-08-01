@@ -4,9 +4,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { User, Mail, Briefcase, Building } from 'lucide-react';
 import EmailComposer from '@/components/EmailComposer';
 import SecondaryNavbar from '@/components/SecondaryNavbar';
-import { checkAuthStatus, SessionData } from '@/utils/session';
+import UserProfileSidebar from '@/components/UserProfileSidebar';
+import { checkAuthStatus, SessionData, clearSession } from '@/utils/session';
 import { API_CONFIG } from '@/config/api';
 import { useEmailSections } from '@/hooks/useEmailSections';
+import { useNavigate } from 'react-router-dom';
 
 interface UserData {
   full_name?: string;
@@ -16,11 +18,12 @@ interface UserData {
   experience?: string;
 }
 
-interface HomeProps {
+interface StudioProps {
   onAuthChange: (authState: any) => void;
 }
 
-const Home = ({ onAuthChange }: HomeProps) => {
+const Studio = ({ onAuthChange }: StudioProps) => {
+  const navigate = useNavigate();
   const [userData, setUserData] = useState<UserData | null>(null);
   const [sessionData, setSessionData] = useState<SessionData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -89,6 +92,42 @@ const Home = ({ onAuthChange }: HomeProps) => {
     }
   };
 
+  const handleProfileUpdate = (updatedData: UserData) => {
+    setUserData(updatedData);
+  };
+
+  const handleLogout = async () => {
+    try {
+      if (sessionData?.sessionId) {
+        const response = await fetch(`${API_CONFIG.BASE_URL}/api/logout`, {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+            'ngrok-skip-browser-warning': 'true',
+            'X-Session-ID': sessionData.sessionId
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      // Clear local session regardless of API response
+      clearSession();
+      setSessionData(null);
+      setUserData(null);
+      
+      // Update parent component
+      onAuthChange({
+        isAuthenticated: false,
+        userEmail: null,
+        sessionId: null
+      });
+      
+      // Navigate to user info page
+      navigate('/user-info');
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -128,6 +167,11 @@ const Home = ({ onAuthChange }: HomeProps) => {
       {/* User Profile Section */}
       <div className="bg-white border-b border-gray-200 p-6">
         <div className="max-w-7xl mx-auto">
+          {/* Header with Profile Sidebar */}
+          <div className="flex justify-between items-center mb-4">
+            <h1 className="text-2xl font-bold text-gray-900">Email Composer Dashboard</h1>
+
+          </div>
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
@@ -200,4 +244,4 @@ const Home = ({ onAuthChange }: HomeProps) => {
   );
 };
 
-export default Home;
+export default Studio;

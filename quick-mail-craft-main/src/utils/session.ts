@@ -9,6 +9,7 @@ export interface SessionData {
   profileComplete?: boolean;
   sessionInvalid?: boolean;
   message?: string;
+  wasDeleted?: boolean;
 }
 
 // Multi-session support interfaces
@@ -528,7 +529,8 @@ export const pollAuthStatus = async (authStateId: string, maxAttempts: number = 
             userEmail: data.user_info?.email,
             profileComplete: data.profile_complete || false,
             sessionInvalid: false,
-            message: data.message || 'Authentication successful'
+            message: data.message || 'Authentication successful',
+            wasDeleted: data.was_deleted || false
           };
         } else if (data.error) {
           console.error('######DEBUG##### Auth polling error:', data.error);

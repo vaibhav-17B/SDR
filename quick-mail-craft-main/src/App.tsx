@@ -5,9 +5,10 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Navbar from "./components/Navbar";
-import Home from "./pages/Home";
+import Onboard from "./pages/Onboard";
 import UserInfo from "./pages/UserInfo";
-import FindLeads from "./pages/FindLeads";
+import Prospects from "./pages/Prospects";
+import Studio from "./pages/Studio";
 import NotFound from "./pages/NotFound";
 import { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
@@ -54,9 +55,9 @@ const AppContent = () => {
   // Only refresh auth status on specific route changes that matter
   useEffect(() => {
     // Only refresh on routes where auth status might have changed
-    if (location.pathname === '/user-info' || location.pathname === '/find-leads' || location.pathname === '/') {
+    if (location.pathname === '/user-info' || location.pathname === '/prospects' || location.pathname === '/studio') {
       // Use cached version unless coming from user-info (profile completion)
-      const shouldForceRefresh = location.pathname === '/find-leads' && 
+      const shouldForceRefresh = (location.pathname === '/prospects' || location.pathname === '/studio') && 
                                 document.referrer.includes('/user-info');
       refreshAuthStatus(shouldForceRefresh);
     }
@@ -91,9 +92,13 @@ const AppContent = () => {
         onSignOut={handleSignOut}
       />
       <Routes>
-        <Route path="/" element={<Home onAuthChange={setAuthState} />} />
+        <Route path="/" element={<Onboard />} />
         <Route path="/user-info" element={<UserInfo onAuthChange={setAuthState} />} />
-        <Route path="/find-leads" element={<FindLeads />} />
+        <Route path="/prospects" element={<Prospects />} />
+        <Route path="/studio" element={<Studio onAuthChange={setAuthState} />} />
+        {/* Backward compatibility redirects */}
+        <Route path="/find-leads" element={<Prospects />} />
+        <Route path="/email-composer" element={<Studio onAuthChange={setAuthState} />} />
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<NotFound />} />
       </Routes>

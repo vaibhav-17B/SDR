@@ -3,7 +3,7 @@ import React from 'react';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import FindLeadsContent from '@/components/FindLeadsContent';
 
-const FindLeads = () => {
+const Prospects = () => {
   return (
     <ProtectedRoute requireAuth={true}>
       <FindLeadsContent />
@@ -11,4 +11,4 @@ const FindLeads = () => {
   );
 };
 
-export default FindLeads;
+export default Prospects;

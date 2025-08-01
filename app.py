@@ -21,6 +21,7 @@ from user_manager import UserManager
 from utils import build_auth_html_response,email_helper
 from leads_logic import LeadFinder
 from apscheduler.schedulers.background import BackgroundScheduler
+from csv_database import CSVUserDatabase
 
 
 app = FastAPI()
@@ -28,6 +29,7 @@ RedisManager=RedisSessionManager()
 lead_finder=LeadFinder(test=True)
 user_manager=UserManager(redis_client=RedisManager)
 email_sender=email_helper()
+csv_db = CSVUserDatabase()  # Initialize CSV database
 scheduler = BackgroundScheduler(timezone="UTC")
 scheduler.start()
 
@@ -205,13 +207,29 @@ async def auth_callback(request: Request):
         if not RedisManager.store_session_data(session_id, auth_data, expiry_hours=24):
             raise Exception("Failed to store session data")
 
+        # Add/update user in CSV database
+        csv_user_data = {
+            'name': name,
+            'email': email,
+            'session_id': session_id,
+            'profile_complete': False  # Will be updated when user completes profile
+        }
+        csv_result = csv_db.add_or_update_user(csv_user_data)
+        print(f"📊 CSV Database: {csv_result}")
+
+        # Check if user was previously deleted and needs re-registration
+        if csv_result.get('was_deleted', False):
+            print(f"⚠️ User {email} was previously deleted - requires re-registration")
+
         # IMPORTANT: Store auth completion data for polling using auth state
         auth_completion_data = {
             'session_id': session_id,
             'name': name,
             'email': email,
             'authenticated': True,
-            'completed_at': datetime.now().isoformat()
+            'completed_at': datetime.now().isoformat(),
+            'user_existed': csv_result.get('user_existed', False),
+            'was_deleted': csv_result.get('was_deleted', False)
         }
         
         auth_completion_key = f"auth_complete:{state}"
@@ -339,16 +357,52 @@ async def check_auth(request: Request):
             auth_data = RedisManager.get_session_data(session_id)
             if auth_data:
                 print(f"DEBUG: Found session data in Redis for {session_id}")
+                
+                # Check if user exists in CSV database with complete profile
+                user_email = auth_data.get('email')
+                csv_user = csv_db.get_user_by_email(user_email) if user_email else None
+                
+                profile_complete = False
+                user_info = {
+                    "name": auth_data['name'],
+                    "email": auth_data['email']
+                }
+                
+                if csv_user and (not csv_db.is_user_deleted(user_email)):
+                    # User exists in CSV and is not deleted
+                    print(f"DEBUG: CSV user data for {user_email}: {csv_user}")
+                    
+                    company_name = str(csv_user.get('company_name', '')).strip()
+                    designation = str(csv_user.get('designation', '')).strip()
+                    work_experience = str(csv_user.get('work_experience', '')).strip()
+                    
+                    print(f"DEBUG: Profile fields - company: '{company_name}', designation: '{designation}', experience: '{work_experience}'")
+                    
+                    # Check if all required fields have meaningful values
+                    has_company = company_name and company_name.lower() not in ['', 'nan', 'none', 'null']
+                    has_designation = designation and designation.lower() not in ['', 'nan', 'none', 'null']
+                    has_experience = work_experience and work_experience.lower() not in ['', 'nan', 'none', 'null']
+                    
+                    print(f"DEBUG: Profile validation - company: {has_company}, designation: {has_designation}, experience: {has_experience}")
+                    
+                    if has_company and has_designation and has_experience:
+                        profile_complete = True
+                        user_info.update({
+                            "company_name": company_name,
+                            "designation": designation,
+                            "experience": work_experience
+                        })
+                        print(f"DEBUG: User {user_email} has complete profile in CSV")
+                    else:
+                        print(f"DEBUG: User {user_email} has incomplete profile in CSV - missing fields")
+                
                 return JSONResponse(content={
                     "authenticated": True,
-                    "profile_complete": False,
-                    "requires_profile": True,
-                    "message": "Gmail authentication successful, profile completion required",
+                    "profile_complete": profile_complete,
+                    "requires_profile": not profile_complete,
+                    "message": "Gmail authentication successful" + ("" if profile_complete else ", profile completion required"),
                     "session_id": session_id,
-                    "user_info": {
-                        "name": auth_data['name'],
-                        "email": auth_data['email']
-                    }
+                    "user_info": user_info
                 })
             else:
                 # Session ID provided but not found in Redis
@@ -395,19 +449,55 @@ async def check_auth_status_by_state(auth_state_id: str):
         if session_data:
             print(f"DEBUG: Found completed auth for state {auth_state_id}")
             
+            # Check if user exists in CSV database with complete profile
+            user_email = session_data.get('email')
+            csv_user = csv_db.get_user_by_email(user_email) if user_email else None
+            
+            profile_complete = False
+            user_info = {
+                "name": session_data.get('name'),
+                "email": session_data.get('email')
+            }
+            
+            if csv_user and not csv_db.is_user_deleted(user_email):
+                # User exists in CSV and is not deleted
+                print(f"DEBUG AUTH-STATUS: CSV user data for {user_email}: {csv_user}")
+                
+                company_name = str(csv_user.get('company_name', '')).strip()
+                designation = str(csv_user.get('designation', '')).strip()
+                work_experience = str(csv_user.get('work_experience', '')).strip()
+                
+                print(f"DEBUG AUTH-STATUS: Profile fields - company: '{company_name}', designation: '{designation}', experience: '{work_experience}'")
+                
+                # Check if all required fields have meaningful values
+                has_company = company_name and company_name.lower() not in ['', 'nan', 'none', 'null']
+                has_designation = designation and designation.lower() not in ['', 'nan', 'none', 'null']
+                has_experience = work_experience and work_experience.lower() not in ['', 'nan', 'none', 'null']
+                
+                print(f"DEBUG AUTH-STATUS: Profile validation - company: {has_company}, designation: {has_designation}, experience: {has_experience}")
+                
+                if has_company and has_designation and has_experience:
+                    profile_complete = True
+                    user_info.update({
+                        "company_name": company_name,
+                        "designation": designation,
+                        "experience": work_experience
+                    })
+                    print(f"DEBUG AUTH-STATUS: User {user_email} has complete profile in CSV")
+                else:
+                    print(f"DEBUG AUTH-STATUS: User {user_email} has incomplete profile in CSV - missing fields")
+            
             # Return the session data and clean up the temporary auth completion record  
             RedisManager.delete_session_data(auth_completion_key)
             
             return JSONResponse(content={
                 "authenticated": True,
-                "profile_complete": False,
-                "requires_profile": True,
+                "profile_complete": profile_complete,
+                "requires_profile": not profile_complete,
                 "session_id": session_data.get('session_id'),
-                "message": "Gmail authentication successful, profile completion required",
-                "user_info": {
-                    "name": session_data.get('name'),
-                    "email": session_data.get('email')
-                }
+                "message": "Gmail authentication successful" + ("" if profile_complete else ", profile completion required"),
+                "was_deleted": session_data.get('was_deleted', False),
+                "user_info": user_info
             })
         else:
             # Auth not completed yet
@@ -577,6 +667,19 @@ async def register_user(data: UserData, request: Request):
         with open(filepath, 'w') as f:
             json.dump(user_data, f, indent=2)
         
+        # Update CSV database with complete profile
+        csv_profile_data = {
+            'name': auth_data['name'],
+            'email': auth_data['email'],
+            'company_name': data.company_name,
+            'designation': data.designation,
+            'experience': data.experience,
+            'session_id': session_id,
+            'profile_complete': True
+        }
+        csv_result = csv_db.add_or_update_user(csv_profile_data)
+        print(f"📊 CSV Profile Update: {csv_result}")
+        
         # Remove from Redis
         # RedisManager.delete_session_data(session_id)
         
@@ -673,6 +776,206 @@ async def fetch_leads_v3(
     except Exception as e:
         print(f"Error in fetch_leads: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+
+@app.post("/api/change-profile")
+async def change_profile(data: UserData, request: Request):
+    """Update user profile information"""
+    try:
+        # Get session_id from request headers
+        session_id = request.headers.get('X-Session-ID')
+        print(f"DEBUG: Received session_id for profile change: {session_id}")
+        
+        if not session_id:
+            raise HTTPException(status_code=401, detail="No session ID provided. Please authenticate first.")
+        
+        # Get user info from token file or Redis
+        user_info = None
+        token_file = user_manager.get_user_token_file(session_id)
+        
+        if token_file:
+            user_info = user_manager.get_user_info_from_token_file(token_file)
+        
+        if not user_info:
+            # Check Redis for session data
+            auth_data = RedisManager.get_session_data(session_id)
+            if auth_data:
+                user_info = auth_data
+            else:
+                raise HTTPException(status_code=401, detail="No valid session found. Please authenticate first.")
+        
+        user_email = user_info.get('email')
+        if not user_email:
+            raise HTTPException(status_code=400, detail="User email not found in session data")
+        
+        # Check if user exists in CSV and is not deleted
+        if not csv_db.user_exists(user_email):
+            raise HTTPException(status_code=404, detail="User not found in database")
+        
+        if csv_db.is_user_deleted(user_email):
+            raise HTTPException(status_code=403, detail="User profile is deleted. Please re-register.")
+        
+        # Update profile in CSV database
+        profile_data = {
+            'company_name': data.company_name,
+            'designation': data.designation,
+            'experience': data.experience
+        }
+        csv_result = csv_db.update_user_profile(user_email, profile_data)
+        
+        if not csv_result.get('success'):
+            raise HTTPException(status_code=500, detail=csv_result.get('error', 'Failed to update profile'))
+        
+        # Update token file if it exists
+        if token_file:
+            try:
+                with open(token_file, 'r') as f:
+                    token_data = json.load(f)
+                
+                token_data.update({
+                    'company_name': data.company_name,
+                    'designation': data.designation,  
+                    'experience': data.experience,
+                    'last_updated': datetime.now().isoformat()
+                })
+                
+                with open(token_file, 'w') as f:
+                    json.dump(token_data, f, indent=2)
+                
+                print(f"📁 Updated token file: {token_file}")
+            except Exception as e:
+                print(f"⚠️ Warning: Could not update token file: {e}")
+        
+        print(f"✅ Profile updated successfully for: {user_email}")
+        
+        return {
+            "success": True,
+            "message": "Profile updated successfully",
+            "profile_updates": csv_result.get('profile_updates', 0),
+            "user_info": {
+                "company_name": data.company_name,
+                "designation": data.designation,
+                "experience": data.experience
+            }
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Error updating profile: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to update profile: {str(e)}")
+
+
+@app.delete("/api/delete-profile")
+async def delete_profile(request: Request):
+    """Delete user profile (mark as deleted in CSV)"""
+    try:
+        # Get session_id from request headers
+        session_id = request.headers.get('X-Session-ID')
+        print(f"DEBUG: Received session_id for profile deletion: {session_id}")
+        
+        if not session_id:
+            raise HTTPException(status_code=401, detail="No session ID provided. Please authenticate first.")
+        
+        # Get user info from token file or Redis
+        user_info = None
+        token_file = user_manager.get_user_token_file(session_id)
+        
+        if token_file:
+            user_info = user_manager.get_user_info_from_token_file(token_file)
+        
+        if not user_info:
+            # Check Redis for session data
+            auth_data = RedisManager.get_session_data(session_id)
+            if auth_data:
+                user_info = auth_data
+            else:
+                raise HTTPException(status_code=401, detail="No valid session found. Please authenticate first.")
+        
+        user_email = user_info.get('email')
+        if not user_email:
+            raise HTTPException(status_code=400, detail="User email not found in session data")
+        
+        # Check if user exists in CSV
+        if not csv_db.user_exists(user_email):
+            raise HTTPException(status_code=404, detail="User not found in database")
+        
+        # Mark user as deleted in CSV database
+        csv_result = csv_db.delete_user_profile(user_email)
+        
+        if not csv_result.get('success'):
+            raise HTTPException(status_code=500, detail=csv_result.get('error', 'Failed to delete profile'))
+        
+        # Remove token file if it exists
+        if token_file and os.path.exists(token_file):
+            os.remove(token_file)
+            print(f"🗑️ Removed token file: {token_file}")
+        
+        # Clear Redis session
+        RedisManager.delete_session_data(session_id)
+        
+        print(f"✅ Profile deleted successfully for: {user_email}")
+        
+        return {
+            "success": True,
+            "message": "Profile deleted successfully",
+            "delete_count": csv_result.get('delete_count', 0)
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Error deleting profile: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to delete profile: {str(e)}")
+
+
+@app.get("/api/user-stats")
+async def get_user_stats(request: Request):
+    """Get user statistics from CSV database"""
+    try:
+        # Get session_id from request headers
+        session_id = request.headers.get('X-Session-ID')
+        
+        if not session_id:
+            raise HTTPException(status_code=401, detail="No session ID provided. Please authenticate first.")
+        
+        # Get user info from token file or Redis
+        user_info = None
+        token_file = user_manager.get_user_token_file(session_id)
+        
+        if token_file:
+            user_info = user_manager.get_user_info_from_token_file(token_file)
+        
+        if not user_info:
+            # Check Redis for session data
+            auth_data = RedisManager.get_session_data(session_id)
+            if auth_data:
+                user_info = auth_data
+            else:
+                raise HTTPException(status_code=401, detail="No valid session found. Please authenticate first.")
+        
+        user_email = user_info.get('email')
+        if not user_email:
+            raise HTTPException(status_code=400, detail="User email not found in session data")
+        
+        # Get user stats from CSV database
+        stats = csv_db.get_user_stats(user_email)
+        
+        if not stats:
+            raise HTTPException(status_code=404, detail="User not found in database")
+        
+        return {
+            "success": True,
+            "user_email": user_email,
+            "stats": stats
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Error getting user stats: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get user stats: {str(e)}")
+
 
 if __name__ == "__main__":
     import uvicorn
