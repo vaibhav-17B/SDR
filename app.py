@@ -24,7 +24,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 
 app = FastAPI()
 RedisManager=RedisSessionManager()
-lead_finder=LeadFinder()
+lead_finder=LeadFinder(test=True)
 user_manager=UserManager(redis_client=RedisManager)
 email_sender=email_helper()
 scheduler = BackgroundScheduler(timezone="UTC")
@@ -583,7 +583,7 @@ async def fetch_leads_v3(
         else:
             num_leads=0
         ICP_payload=lead_finder.generate_dynamic_icp_query(request)
-        # filtered_leads=lead_finder.filter_leads(leads)
+        filtered_leads=lead_finder.filter_profiles(leads_data=leads)
         # Only include non-empty search criteria in response
         search_criteria = {}
         request_dict = request.dict()
@@ -594,7 +594,7 @@ async def fetch_leads_v3(
 
         return {
             "success": True,
-            "leads": leads,
+            "leads": filtered_leads,
             "total_count": num_leads,
             "search_criteria": search_criteria,
             "session_id": x_session_id
