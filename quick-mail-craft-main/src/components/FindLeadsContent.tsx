@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import SearchFormWithIcons from './SearchFormWithIcons';
 import SearchResults from './SearchResults';
 import LeadDetailsDialog from '@/components/LeadDetailsDialog';
@@ -251,8 +251,28 @@ const FindLeadsContent = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <div className="min-h-screen bg-white">
+      {/* Hero Section */}
+      <div className="bg-gray-900 text-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <div className="flex items-center space-x-3 mb-4">
+            <div className="p-2 bg-white rounded-lg">
+              <svg className="h-6 w-6 text-gray-900" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+            <h1 className="text-3xl font-bold">Prospect Discovery</h1>
+          </div>
+          <p className="text-gray-300 text-lg max-w-2xl">
+            Find and connect with qualified prospects using advanced search filters. 
+            Build targeted lists for your outreach campaigns.
+          </p>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="bg-gray-50 p-6">
+        <div className="max-w-7xl mx-auto space-y-6">
         <SearchFormWithIcons
           formData={formData}
           onInputChange={handleInputChange}
@@ -280,6 +300,7 @@ const FindLeadsContent = () => {
           lead={selectedLead}
           onSelectEmails={handleSelectEmails}
         />
+        </div>
       </div>
     </div>
   );

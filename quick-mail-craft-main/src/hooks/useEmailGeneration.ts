@@ -1,6 +1,6 @@
 
 import { useState, useCallback } from 'react';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import { API_CONFIG } from '@/config/api';
 import { getSessionId } from '@/utils/session';
 
@@ -21,11 +21,6 @@ export const useEmailGeneration = (sessionId: string | null, activeSection: stri
     
     const loadingToastId = toast.loading("Generating email content...", {
       description: "This may take a few seconds",
-      style: {
-        background: '#ede9fe',
-        border: '1px solid #c4b5fd',
-        color: '#7c3aed',
-      },
     });
     
     try {
@@ -53,11 +48,6 @@ export const useEmailGeneration = (sessionId: string | null, activeSection: stri
         toast.success("Test email generated successfully!", {
           description: "No API call was made - this is a mock email",
           duration: 4000,
-          style: {
-            background: '#dbeafe',
-            border: '1px solid #93c5fd',
-            color: '#1d4ed8',
-          },
         });
       } else {
         // Get session ID from utils
@@ -106,11 +96,6 @@ export const useEmailGeneration = (sessionId: string | null, activeSection: stri
         toast.success("Email content generated successfully!", {
           description: "Your email is ready to review and send",
           duration: 4000,
-          style: {
-            background: '#dcfce7',
-            border: '1px solid #bbf7d0',
-            color: '#16a34a',
-          },
         });
       }
     } catch (error) {
@@ -119,11 +104,6 @@ export const useEmailGeneration = (sessionId: string | null, activeSection: stri
       toast.error("Failed to generate email content. Please try again.", {
         description: "There was an issue with the AI service",
         duration: 5000,
-        style: {
-          background: '#fee2e2',
-          border: '1px solid #fecaca',
-          color: '#dc2626',
-        },
       });
     } finally {
       setIsGenerating(false);

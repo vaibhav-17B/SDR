@@ -1,6 +1,6 @@
 
 import React, { useState, useCallback } from 'react';
-import { toast, Toaster } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import EmailComposerMain from './EmailComposerMain';
 import EmailGenerationDialog from './EmailGenerationDialog';
 import EmailComposeDialog from './EmailComposeDialog';
@@ -89,45 +89,29 @@ const EmailComposer = () => {
   }, [getCurrentEmailData, handleSendEmail]);
 
   return (
-    <div className="min-h-screen bg-gray-100 p-4">
-      <Toaster 
-        expand={true}
-        richColors={true}
-        toastOptions={{
-          duration: 0,
-          style: {
-            fontSize: '14px',
-            fontWeight: '500',
-            borderRadius: '8px',
-            padding: '12px 16px',
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-          },
-        }}
+    <div className="space-y-6">
+      {/* Hidden Gmail Auth - handles authentication state */}
+      <div className="hidden">
+        <GmailAuth onAuthChange={handleAuthChange} />
+      </div>
+      
+      <EmailComposerMain onCreateMail={handleCreateMail} />
+      
+      <EmailGenerationDialog
+        isOpen={isGenerationDialogOpen}
+        onClose={() => setIsGenerationDialogOpen(false)}
+        onGenerate={handleGenerateEmail}
+        isGenerating={isGenerating}
       />
       
-      <div className="max-w-4xl mx-auto">
-        <div className="mb-4">
-          <GmailAuth onAuthChange={handleAuthChange} />
-        </div>
-
-        <EmailComposerMain onCreateMail={handleCreateMail} />
-        
-        <EmailGenerationDialog
-          isOpen={isGenerationDialogOpen}
-          onClose={() => setIsGenerationDialogOpen(false)}
-          onGenerate={handleGenerateEmail}
-          isGenerating={isGenerating}
-        />
-        
-        <EmailComposeDialog
-          isOpen={isComposeDialogOpen}
-          onClose={() => setIsComposeDialogOpen(false)}
-          emailData={getCurrentEmailData()}
-          onEmailDataChange={handleInputChange}
-          onSendEmail={handleSendEmailClick}
-          isSending={isSending}
-        />
-      </div>
+      <EmailComposeDialog
+        isOpen={isComposeDialogOpen}
+        onClose={() => setIsComposeDialogOpen(false)}
+        emailData={getCurrentEmailData()}
+        onEmailDataChange={handleInputChange}
+        onSendEmail={handleSendEmailClick}
+        isSending={isSending}
+      />
     </div>
   );
 };

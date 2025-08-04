@@ -59,33 +59,47 @@ const SearchResults = ({ leads, onLeadClick, getLeadDisplayName, getLeadDisplayE
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between">
-          Search Results ({leads.length} leads found)
-        </CardTitle>
+    <Card className="border-gray-200 shadow-xl rounded-xl overflow-hidden">
+      <CardHeader className="bg-gradient-to-r from-gray-900 to-gray-800 text-white p-6">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-xl font-bold text-white flex items-center">
+            Search Results ({leads.length} leads found)
+          </CardTitle>
+          {searchParams && (
+            <Collapsible open={isParamsOpen} onOpenChange={setIsParamsOpen}>
+              <CollapsibleTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="bg-gray-100 border-2 border-gray-200 text-gray-800 hover:bg-gray-200 hover:border-gray-300 hover:text-gray-900 rounded-lg font-medium transition-all duration-200 shadow-sm"
+                >
+                  <div className="flex items-center">
+                    See Search Params Used
+                    {isParamsOpen ? <ChevronUp className="w-4 h-4 ml-2" /> : <ChevronDown className="w-4 h-4 ml-2" />}
+                  </div>
+                </Button>
+              </CollapsibleTrigger>
+            </Collapsible>
+          )}
+        </div>
         {searchParams && (
           <Collapsible open={isParamsOpen} onOpenChange={setIsParamsOpen}>
-            <CollapsibleTrigger asChild>
-              <Button variant="outline" size="sm" className="w-fit">
-                See Search Params Used
-                {isParamsOpen ? <ChevronUp className="w-4 h-4 ml-2" /> : <ChevronDown className="w-4 h-4 ml-2" />}
-              </Button>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="mt-3">
-              <div className="bg-muted/50 p-4 rounded-lg border">
-                <h4 className="font-semibold text-sm mb-3 text-muted-foreground">Search Parameters Used:</h4>
+            <CollapsibleContent className="mt-4">
+              <div className="bg-gray-800/90 backdrop-blur-sm p-4 rounded-lg border border-gray-600">
+                <h4 className="font-semibold text-sm mb-3 text-gray-100 flex items-center">
+                  Search Parameters Used:
+                </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                   {Object.entries(searchParams).map(([key, value]) => {
                     const formattedValue = formatParamValue(value);
                     if (!formattedValue) return null;
                     
                     return (
-                      <div key={key} className="bg-background p-3 rounded border">
-                        <div className="text-xs font-medium text-primary mb-1">
+                      <div key={key} className="bg-white p-3 rounded-lg border border-gray-200 hover:border-gray-300 hover:shadow-sm transition-all duration-200">
+                        <div className="text-xs font-medium text-gray-700 mb-1">
                           {getParamDisplayName(key)}
                         </div>
-                        <div className="text-sm text-foreground break-words">
+                        <div className="text-sm text-gray-900 break-words font-medium">
                           {formattedValue}
                         </div>
                       </div>
@@ -97,13 +111,13 @@ const SearchResults = ({ leads, onLeadClick, getLeadDisplayName, getLeadDisplayE
           </Collapsible>
         )}
       </CardHeader>
-      <CardContent>
-        <div className="space-y-3">
+      <CardContent className="p-6">
+        <div className="space-y-4">
           {leads.map((lead, index) => (
             <div
               key={index}
               onClick={() => onLeadClick(lead)}
-              className="p-4 border rounded-lg hover:bg-accent/50 cursor-pointer transition-all duration-200 hover:shadow-md"
+              className="group p-5 border border-gray-100 rounded-xl hover:bg-gradient-to-r hover:from-gray-900 hover:to-gray-800 hover:text-white cursor-pointer transition-all duration-300 hover:shadow-xl bg-white hover:border-gray-700 hover:scale-[1.02]"
             >
               <div className="flex items-center space-x-4">
                 <div className="flex-shrink-0">
@@ -111,23 +125,28 @@ const SearchResults = ({ leads, onLeadClick, getLeadDisplayName, getLeadDisplayE
                     <img 
                       src={getLeadPhoto(lead)} 
                       alt={getLeadDisplayName(lead)}
-                      className="w-12 h-12 rounded-full object-cover border-2 border-border"
+                      className="w-14 h-14 rounded-full object-cover border-2 border-gray-200 group-hover:border-white shadow-sm"
                     />
                   ) : (
-                    <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center">
-                      <User className="w-6 h-6 text-muted-foreground" />
+                    <div className="w-14 h-14 bg-gray-100 group-hover:bg-white/20 rounded-full flex items-center justify-center shadow-sm border-2 border-gray-200 group-hover:border-white transition-all duration-300">
+                      <User className="w-7 h-7 text-gray-500 group-hover:text-white" />
                     </div>
                   )}
                 </div>
                 <div className="flex-grow min-w-0">
                   <div className="flex items-center justify-between">
                     <div className="flex-grow min-w-0">
-                      <h3 className="font-semibold text-foreground truncate">{getLeadDisplayName(lead)}</h3>
-                      <p className="text-sm text-muted-foreground truncate">{getLeadCurrentPosition(lead)}</p>
-                      <p className="text-sm text-muted-foreground truncate">{getLeadCurrentCompany(lead)}</p>
-                      <div className="flex items-center space-x-1 mt-1">
-                        <Mail className="w-3 h-3 text-muted-foreground" />
-                        <span className="text-xs text-muted-foreground truncate">{getLeadDisplayEmail(lead)}</span>
+                      <h3 className="font-bold text-gray-900 group-hover:text-white truncate text-lg">{getLeadDisplayName(lead)}</h3>
+                      <p className="text-sm text-gray-600 group-hover:text-gray-200 truncate font-medium">{getLeadCurrentPosition(lead)}</p>
+                      <p className="text-sm text-gray-500 group-hover:text-gray-300 truncate">{getLeadCurrentCompany(lead)}</p>
+                      <div className="flex items-center space-x-1 mt-2">
+                        <Mail className="w-3 h-3 text-gray-400 group-hover:text-gray-300" />
+                        <span className="text-xs text-gray-500 group-hover:text-gray-300 truncate">{getLeadDisplayEmail(lead)}</span>
+                      </div>
+                    </div>
+                    <div className="flex-shrink-0 ml-4">
+                      <div className="w-8 h-8 bg-gray-100 group-hover:bg-white/20 rounded-full flex items-center justify-center transition-all duration-300">
+                        <ChevronDown className="w-4 h-4 text-gray-400 group-hover:text-white rotate-[-90deg]" />
                       </div>
                     </div>
                   </div>

@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import GmailAuth from '@/components/GmailAuth';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import { API_CONFIG } from '@/config/api';
 import { addSession, getSessionId, checkAuthStatus, clearSession } from '@/utils/session';
 

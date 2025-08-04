@@ -84,10 +84,10 @@ const EmailComposeDialog = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col p-0">
-        <DialogHeader className="px-6 py-4 border-b bg-gradient-to-r from-blue-500 to-indigo-600 text-white">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col p-0 border-2 border-gray-900 shadow-xl rounded-xl">
+        <DialogHeader className="px-6 py-4 border-b bg-gray-900 text-white">
           <div className="flex items-center justify-between">
-            <DialogTitle className="text-xl font-semibold flex items-center">
+            <DialogTitle className="text-xl font-semibold flex items-center text-white">
               <Mail className="w-5 h-5 mr-2" />
               Compose Email
             </DialogTitle>
@@ -102,7 +102,7 @@ const EmailComposeDialog = ({
           </div>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto p-6 space-y-4">
+        <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-white">
           <div className="space-y-2">
             <Label htmlFor="to" className="text-sm font-medium text-gray-700">
               To *
@@ -253,7 +253,7 @@ const EmailComposeDialog = ({
           </Collapsible>
         </div>
 
-        <div className="px-6 py-4 border-t bg-gray-50 flex justify-end items-center">
+        <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex justify-end items-center rounded-b-xl">
           <div className="flex space-x-3">
             <Button
               variant="outline"
@@ -265,7 +265,7 @@ const EmailComposeDialog = ({
             <Button
               onClick={onSendEmail}
               disabled={isSending || !isFormValid()}
-              className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white"
+              className="bg-gray-900 hover:bg-gray-800 text-white"
             >
               {isSending ? (
                 <>

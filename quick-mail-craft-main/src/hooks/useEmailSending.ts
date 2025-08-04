@@ -1,6 +1,6 @@
 
 import { useState, useCallback } from 'react';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import { API_CONFIG } from '@/config/api';
 import { getSessionId } from '@/utils/session';
 import { EmailData } from './useEmailSections';
@@ -58,11 +58,6 @@ export const useEmailSending = (sessionId: string | null, resetCurrentSection: (
     
     const sendingToastId = toast.loading("Sending email...", {
       description: "Please wait while we send your email",
-      style: {
-        background: '#ede9fe',
-        border: '1px solid #c4b5fd',
-        color: '#7c3aed',
-      },
     });
     
     try {

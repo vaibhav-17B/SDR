@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Mail, LogIn, LogOut, User } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import { API_CONFIG } from '@/config/api';
 import { getSessionId, setSessionId, clearSession, generateAuthState, storeAuthState, pollAuthStatus } from '@/utils/session';
 

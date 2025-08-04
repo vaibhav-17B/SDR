@@ -93,7 +93,7 @@ const EmailGenerationForm = ({ onGenerate, isGenerating }: EmailGenerationFormPr
       <Button
         type="submit"
         disabled={!isFormValid || isGenerating}
-        className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white"
+        className="w-full bg-gray-900 hover:bg-gray-800 text-white"
       >
         {isGenerating ? (
           <>

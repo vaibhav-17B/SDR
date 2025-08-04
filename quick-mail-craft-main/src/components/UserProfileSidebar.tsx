@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { User, Settings, Edit3, Trash2, LogOut } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import { API_CONFIG } from '@/config/api';
 
 interface UserData {
@@ -156,7 +156,7 @@ const UserProfileSidebar = ({ userData, sessionId, onProfileUpdate, onLogout }: 
           </DropdownMenuItem>
           <DropdownMenuItem 
             onClick={() => setShowDeleteConfirmDialog(true)} 
-            className="flex items-center space-x-2 text-red-600 hover:text-red-700"
+            className="flex items-center space-x-2 text-red-600 hover:text-red-700 hover:bg-red-50"
           >
             <Trash2 className="w-4 h-4" />
             <span>Delete Profile</span>
@@ -242,8 +242,8 @@ const UserProfileSidebar = ({ userData, sessionId, onProfileUpdate, onLogout }: 
               </Button>
               <Button 
                 type="button" 
-                variant="destructive" 
-                className="flex-1"
+                variant="default"
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white"
                 onClick={handleDeleteProfile}
                 disabled={isSubmitting}
               >

@@ -61,13 +61,16 @@ const SecondaryNavbar = ({
   };
 
   return (
-    <div className="bg-gray-50 border-b border-gray-200">
+    <div className="bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="py-4">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-700">Email Campaign Sections</h3>
-            <div className="text-sm text-gray-500">
-              Currently editing: <span className="font-medium text-blue-600">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">Email Campaign Sections</h3>
+              <p className="text-sm text-gray-600 mt-1">Organize your emails into different campaigns and sections</p>
+            </div>
+            <div className="text-sm text-gray-600 bg-white px-4 py-2 rounded-lg border border-gray-100 shadow-sm">
+              Currently editing: <span className="font-medium text-gray-900">
                 {emailSections.find(s => s.id === activeSection)?.name || 'Main Email'}
               </span>
             </div>
@@ -77,10 +80,10 @@ const SecondaryNavbar = ({
             {emailSections.map((section, index) => (
               <div 
                 key={section.id}
-                className={`relative flex items-center gap-2 px-4 py-2 rounded-lg border-2 transition-all duration-200 ${
+                className={`relative flex items-center gap-2 px-4 py-2 rounded-lg border transition-all duration-200 ${
                   activeSection === section.id
-                    ? 'bg-blue-500 text-white border-blue-500 shadow-md'
-                    : 'bg-white text-gray-700 border-gray-200 hover:border-blue-300 hover:shadow-sm'
+                    ? 'bg-gray-900 text-white border-gray-800 shadow-sm'
+                    : 'bg-white text-gray-700 border-gray-100 hover:border-gray-200 hover:shadow-sm'
                 }`}
               >
                 {editingName === section.id ? (
@@ -120,7 +123,7 @@ const SecondaryNavbar = ({
                         {section.name}
                       </button>
                       {index === 0 && (
-                        <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                        <span className="text-xs bg-gray-100 text-gray-800 px-2 py-1 rounded-full">
                           Main
                         </span>
                       )}
@@ -157,7 +160,7 @@ const SecondaryNavbar = ({
               onClick={onAddSection}
               variant="outline"
               size="sm"
-              className="flex items-center gap-2 px-4 py-2 border-dashed border-2 border-blue-300 text-blue-600 hover:bg-blue-50 hover:border-blue-400 transition-all duration-200"
+              className="flex items-center gap-2 px-4 py-2 border-dashed border-2 bg-gray-100 border-gray-300 text-gray-700 hover:bg-gray-200 hover:border-gray-400 hover:text-gray-800 transition-all duration-200 rounded-lg"
             >
               <Plus className="w-4 h-4" />
               Add Section

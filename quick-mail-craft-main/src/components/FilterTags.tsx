@@ -24,7 +24,7 @@ const FilterTags = ({ filters, onRemoveFilter, fieldLabels }: FilterTagsProps) =
             <Badge key={`${field}-${item}`} variant="secondary" className="flex items-center gap-1">
               <span className="text-xs">{fieldLabels[field]}: {item}</span>
               <X 
-                className="w-3 h-3 cursor-pointer hover:text-destructive"
+                className="w-3 h-3 cursor-pointer text-gray-500 hover:text-red-600"
                 onClick={() => onRemoveFilter(field, item)}
               />
             </Badge>
@@ -36,7 +36,7 @@ const FilterTags = ({ filters, onRemoveFilter, fieldLabels }: FilterTagsProps) =
           <Badge key={field} variant="secondary" className="flex items-center gap-1">
             <span className="text-xs">{fieldLabels[field]}: {value}</span>
             <X 
-              className="w-3 h-3 cursor-pointer hover:text-destructive"
+              className="w-3 h-3 cursor-pointer text-gray-500 hover:text-red-600"
               onClick={() => onRemoveFilter(field)}
             />
           </Badge>
