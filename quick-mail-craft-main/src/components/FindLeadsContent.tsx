@@ -1,10 +1,13 @@
 
 import React, { useState } from 'react';
 import { toast } from '@/components/ui/sonner';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import SearchFormWithIcons from './SearchFormWithIcons';
 import SearchResults from './SearchResults';
 import SearchHistory from './SearchHistory';
+import ProspectsList from './ProspectsList';
 import LeadDetailsDialog from '@/components/LeadDetailsDialog';
+import NewListDialog from '@/components/NewListDialog';
 import { API_CONFIG } from '@/config/api';
 import { getSessionId } from '@/utils/session';
 
@@ -76,6 +79,8 @@ const FindLeadsContent = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedEmails, setSelectedEmails] = useState<string[]>([]);
   const [lastSearchParams, setLastSearchParams] = useState<any>(null);
+  const [prospectsListKey, setProspectsListKey] = useState<number>(0);
+  const [isNewListDialogOpen, setIsNewListDialogOpen] = useState(false);
 
   const handleInputChange = (field: string, value: string | string[]) => {
     setFormData(prev => {
@@ -231,6 +236,18 @@ const FindLeadsContent = () => {
     localStorage.setItem('selectedEmails', JSON.stringify(emails));
   };
 
+  const refreshProspectsList = () => {
+    setProspectsListKey(prev => prev + 1);
+  };
+
+  const handleOpenNewListDialog = () => {
+    setIsNewListDialogOpen(true);
+  };
+
+  const handleNewListSuccess = () => {
+    refreshProspectsList();
+  };
+
   const handleLoadSearch = (searchParams: any, results: Lead[]) => {
     console.log('\n📥 FRONTEND: HANDLING LOAD SEARCH');
     console.log('📝 Received search params:', searchParams);
@@ -318,37 +335,72 @@ const FindLeadsContent = () => {
 
       {/* Main Content */}
       <div className="bg-gray-50 p-6">
-        <div className="max-w-7xl mx-auto space-y-6">
-        
-        <SearchFormWithIcons
-          formData={formData}
-          onInputChange={handleInputChange}
-          onSearch={handleSearchLeads}
-          isSearching={isSearching}
-          validateForm={validateForm}
-          getFilledFieldsCount={getFilledFieldsCount}
-          onRemoveFilter={handleRemoveFilter}
-        />
-        
-        <SearchHistory onLoadSearch={handleLoadSearch} />
+        <div className="max-w-7xl mx-auto">
+          <Tabs defaultValue="find-leads" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 mb-6 bg-white shadow-sm border border-gray-200">
+              <TabsTrigger 
+                value="find-leads" 
+                className="data-[state=active]:bg-gray-900 data-[state=active]:text-white font-semibold text-gray-600 hover:text-gray-900 transition-colors"
+              >
+                🔍 Find Leads
+              </TabsTrigger>
+              <TabsTrigger 
+                value="prospects-lists" 
+                className="data-[state=active]:bg-gray-900 data-[state=active]:text-white font-semibold text-gray-600 hover:text-gray-900 transition-colors"
+              >
+                📋 My Prospects Lists
+              </TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="find-leads" className="space-y-6 mt-0">
+              <SearchFormWithIcons
+                formData={formData}
+                onInputChange={handleInputChange}
+                onSearch={handleSearchLeads}
+                isSearching={isSearching}
+                validateForm={validateForm}
+                getFilledFieldsCount={getFilledFieldsCount}
+                onRemoveFilter={handleRemoveFilter}
+              />
+              
+              <SearchHistory onLoadSearch={handleLoadSearch} />
 
-        <SearchResults
-          leads={leads}
-          onLeadClick={handleLeadClick}
-          getLeadDisplayName={getLeadDisplayName}
-          getLeadDisplayEmail={getLeadDisplayEmail}
-          getLeadCurrentPosition={getLeadCurrentPosition}
-          getLeadCurrentCompany={getLeadCurrentCompany}
-          getLeadPhoto={getLeadPhoto}
-          searchParams={lastSearchParams}
-        />
+              <SearchResults
+                leads={leads}
+                onLeadClick={handleLeadClick}
+                getLeadDisplayName={getLeadDisplayName}
+                getLeadDisplayEmail={getLeadDisplayEmail}
+                getLeadCurrentPosition={getLeadCurrentPosition}
+                getLeadCurrentCompany={getLeadCurrentCompany}
+                getLeadPhoto={getLeadPhoto}
+                searchParams={lastSearchParams}
+                onProspectsListUpdate={refreshProspectsList}
+              />
+            </TabsContent>
 
-        <LeadDetailsDialog
-          isOpen={isDialogOpen}
-          onClose={() => setIsDialogOpen(false)}
-          lead={selectedLead}
-          onSelectEmails={handleSelectEmails}
-        />
+            <TabsContent value="prospects-lists" className="space-y-6 mt-0">
+              <ProspectsList key={prospectsListKey} />
+            </TabsContent>
+          </Tabs>
+
+          <LeadDetailsDialog
+            isOpen={isDialogOpen}
+            onClose={() => setIsDialogOpen(false)}
+            lead={selectedLead}
+            onSelectEmails={handleSelectEmails}
+            onProspectsListUpdate={refreshProspectsList}
+            onOpenNewListDialog={handleOpenNewListDialog}
+          />
+
+          {/* Separate New List Dialog */}
+          {selectedLead && (
+            <NewListDialog
+              isOpen={isNewListDialogOpen}
+              onClose={() => setIsNewListDialogOpen(false)}
+              lead={selectedLead}
+              onSuccess={handleNewListSuccess}
+            />
+          )}
         </div>
       </div>
     </div>

@@ -23,6 +23,7 @@ from leads_logic import LeadFinder
 from apscheduler.schedulers.background import BackgroundScheduler
 from csv_database import CSVUserDatabase
 from search_history_manager import SearchHistoryManager
+from prospects_list_manager import ProspectsListManager
 
 
 app = FastAPI()
@@ -32,6 +33,7 @@ user_manager=UserManager(redis_client=RedisManager)
 email_sender=email_helper()
 csv_db = CSVUserDatabase()  # Initialize CSV database
 search_history_manager = SearchHistoryManager()  # Initialize search history manager
+prospects_list_manager = ProspectsListManager()  # Initialize prospects list manager
 scheduler = BackgroundScheduler(timezone="UTC")
 scheduler.start()
 
@@ -1266,6 +1268,364 @@ async def get_user_stats(request: Request):
     except Exception as e:
         print(f"❌ Error getting user stats: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to get user stats: {str(e)}")
+
+
+# Prospects Lists Endpoints
+
+@app.get("/api/prospects-lists")
+async def get_prospects_lists(request: Request):
+    """Get all prospects lists for the authenticated user"""
+    try:
+        # Get session_id from request headers
+        session_id = request.headers.get('X-Session-ID')
+        
+        if not session_id:
+            raise HTTPException(status_code=401, detail="No session ID provided. Please authenticate first.")
+        
+        # Get user info from token file or Redis
+        user_info = None
+        token_file = user_manager.get_user_token_file(session_id)
+        
+        if token_file:
+            user_info = user_manager.get_user_info_from_token_file(token_file)
+        
+        if not user_info:
+            # Check Redis for session data
+            auth_data = RedisManager.get_session_data(session_id)
+            if auth_data:
+                user_info = auth_data
+            else:
+                raise HTTPException(status_code=401, detail="No valid session found. Please authenticate first.")
+        
+        user_email = user_info.get('email')
+        if not user_email:
+            raise HTTPException(status_code=400, detail="User email not found in session data")
+        
+        print(f"\n📋 API REQUEST: GET_PROSPECTS_LISTS for {user_email}")
+        
+        # Get prospects lists from manager
+        prospects_lists = prospects_list_manager.get_user_prospects_lists(user_email)
+        
+        print(f"✅ Retrieved {len(prospects_lists)} prospects lists for {user_email}")
+        
+        return {
+            "success": True,
+            "user_email": user_email,
+            "total_lists": len(prospects_lists),
+            "prospects_lists": prospects_lists
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Error getting prospects lists: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get prospects lists: {str(e)}")
+
+
+@app.post("/api/prospects-lists")
+async def create_prospects_list(request: Request):
+    """Create a new prospects list"""
+    try:
+        # Get session_id from request headers
+        session_id = request.headers.get('X-Session-ID')
+        
+        if not session_id:
+            raise HTTPException(status_code=401, detail="No session ID provided. Please authenticate first.")
+        
+        # Get user info from token file or Redis
+        user_info = None
+        token_file = user_manager.get_user_token_file(session_id)
+        
+        if token_file:
+            user_info = user_manager.get_user_info_from_token_file(token_file)
+        
+        if not user_info:
+            # Check Redis for session data
+            auth_data = RedisManager.get_session_data(session_id)
+            if auth_data:
+                user_info = auth_data
+            else:
+                raise HTTPException(status_code=401, detail="No valid session found. Please authenticate first.")
+        
+        user_email = user_info.get('email')
+        if not user_email:
+            raise HTTPException(status_code=400, detail="User email not found in session data")
+        
+        # Get request body
+        body = await request.json()
+        list_name = body.get('list_name', '').strip()
+        description = body.get('description', '').strip()
+        prospects = body.get('prospects', [])
+        tags = body.get('tags', [])
+        
+        if not list_name:
+            raise HTTPException(status_code=400, detail="List name is required")
+        
+        print(f"\n➕ API REQUEST: CREATE_PROSPECTS_LIST for {user_email}")
+        print(f"List name: {list_name}")
+        print(f"Description: {description}")
+        print(f"Prospects count: {len(prospects)}")
+        
+        # Create prospects list
+        list_id = prospects_list_manager.create_prospects_list(
+            user_email=user_email,
+            list_name=list_name,
+            prospects=prospects,
+            description=description,
+            tags=tags
+        )
+        
+        if not list_id:
+            raise HTTPException(status_code=500, detail="Failed to create prospects list")
+        
+        print(f"✅ Created prospects list: {list_id} for {user_email}")
+        
+        return {
+            "success": True,
+            "list_id": list_id,
+            "list_name": list_name,
+            "message": f"Prospects list '{list_name}' created successfully"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Error creating prospects list: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to create prospects list: {str(e)}")
+
+
+@app.post("/api/prospects-lists/{list_id}/add-prospects")
+async def add_prospects_to_list(list_id: str, request: Request):
+    """Add prospects to an existing list"""
+    try:
+        # Get session_id from request headers
+        session_id = request.headers.get('X-Session-ID')
+        
+        if not session_id:
+            raise HTTPException(status_code=401, detail="No session ID provided. Please authenticate first.")
+        
+        # Get user info from token file or Redis
+        user_info = None
+        token_file = user_manager.get_user_token_file(session_id)
+        
+        if token_file:
+            user_info = user_manager.get_user_info_from_token_file(token_file)
+        
+        if not user_info:
+            # Check Redis for session data
+            auth_data = RedisManager.get_session_data(session_id)
+            if auth_data:
+                user_info = auth_data
+            else:
+                raise HTTPException(status_code=401, detail="No valid session found. Please authenticate first.")
+        
+        user_email = user_info.get('email')
+        if not user_email:
+            raise HTTPException(status_code=400, detail="User email not found in session data")
+        
+        # Get request body
+        body = await request.json()
+        prospects = body.get('prospects', [])
+        
+        if not prospects:
+            raise HTTPException(status_code=400, detail="No prospects provided")
+        
+        print(f"\n➕ API REQUEST: ADD_PROSPECTS_TO_LIST for {user_email}")
+        print(f"List ID: {list_id}")
+        print(f"Prospects count: {len(prospects)}")
+        
+        # Add prospects to list
+        success = prospects_list_manager.add_prospects_to_list(
+            user_email=user_email,
+            list_id=list_id,
+            new_prospects=prospects
+        )
+        
+        if not success:
+            raise HTTPException(status_code=404, detail="List not found or failed to add prospects")
+        
+        print(f"✅ Added prospects to list: {list_id} for {user_email}")
+        
+        return {
+            "success": True,
+            "list_id": list_id,
+            "message": f"Added {len(prospects)} prospects to list"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Error adding prospects to list: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to add prospects to list: {str(e)}")
+
+
+@app.delete("/api/prospects-lists/{list_id}")
+async def delete_prospects_list(list_id: str, request: Request):
+    """Delete a prospects list"""
+    try:
+        # Get session_id from request headers
+        session_id = request.headers.get('X-Session-ID')
+        
+        if not session_id:
+            raise HTTPException(status_code=401, detail="No session ID provided. Please authenticate first.")
+        
+        # Get user info from token file or Redis
+        user_info = None
+        token_file = user_manager.get_user_token_file(session_id)
+        
+        if token_file:
+            user_info = user_manager.get_user_info_from_token_file(token_file)
+        
+        if not user_info:
+            # Check Redis for session data
+            auth_data = RedisManager.get_session_data(session_id)
+            if auth_data:
+                user_info = auth_data
+            else:
+                raise HTTPException(status_code=401, detail="No valid session found. Please authenticate first.")
+        
+        user_email = user_info.get('email')
+        if not user_email:
+            raise HTTPException(status_code=400, detail="User email not found in session data")
+        
+        print(f"\n🗑️ API REQUEST: DELETE_PROSPECTS_LIST for {user_email}")
+        print(f"List ID: {list_id}")
+        
+        # Delete prospects list
+        success = prospects_list_manager.delete_prospects_list(
+            user_email=user_email,
+            list_id=list_id
+        )
+        
+        if not success:
+            raise HTTPException(status_code=404, detail="List not found or failed to delete")
+        
+        print(f"✅ Deleted prospects list: {list_id} for {user_email}")
+        
+        return {
+            "success": True,
+            "list_id": list_id,
+            "message": "Prospects list deleted successfully"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Error deleting prospects list: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to delete prospects list: {str(e)}")
+
+
+@app.get("/api/prospects-lists/{list_id}")
+async def get_prospects_list_by_id(list_id: str, request: Request):
+    """Get a specific prospects list by ID"""
+    try:
+        # Get session_id from request headers
+        session_id = request.headers.get('X-Session-ID')
+        
+        if not session_id:
+            raise HTTPException(status_code=401, detail="No session ID provided. Please authenticate first.")
+        
+        # Get user info from token file or Redis
+        user_info = None
+        token_file = user_manager.get_user_token_file(session_id)
+        
+        if token_file:
+            user_info = user_manager.get_user_info_from_token_file(token_file)
+        
+        if not user_info:
+            # Check Redis for session data
+            auth_data = RedisManager.get_session_data(session_id)
+            if auth_data:
+                user_info = auth_data
+            else:
+                raise HTTPException(status_code=401, detail="No valid session found. Please authenticate first.")
+        
+        user_email = user_info.get('email')
+        if not user_email:
+            raise HTTPException(status_code=400, detail="User email not found in session data")
+        
+        print(f"\n📋 API REQUEST: GET_PROSPECTS_LIST_BY_ID for {user_email}")
+        print(f"List ID: {list_id}")
+        
+        # Get prospects list by ID
+        prospects_list = prospects_list_manager.get_prospects_list_by_id(
+            user_email=user_email,
+            list_id=list_id
+        )
+        
+        if not prospects_list:
+            raise HTTPException(status_code=404, detail="Prospects list not found")
+        
+        print(f"✅ Retrieved prospects list: {list_id} for {user_email}")
+        
+        return {
+            "success": True,
+            "prospects_list": prospects_list
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Error getting prospects list: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get prospects list: {str(e)}")
+
+
+@app.delete("/api/prospects-lists/{list_id}/prospects/{prospect_index}")
+async def remove_prospect_from_list(list_id: str, prospect_index: int, request: Request):
+    """Remove a prospect from a list by index"""
+    try:
+        # Get session_id from request headers
+        session_id = request.headers.get('X-Session-ID')
+        
+        if not session_id:
+            raise HTTPException(status_code=401, detail="No session ID provided. Please authenticate first.")
+        
+        # Get user info from token file or Redis
+        user_info = None
+        token_file = user_manager.get_user_token_file(session_id)
+        
+        if token_file:
+            user_info = user_manager.get_user_info_from_token_file(token_file)
+        
+        if not user_info:
+            # Check Redis for session data
+            auth_data = RedisManager.get_session_data(session_id)
+            if auth_data:
+                user_info = auth_data
+            else:
+                raise HTTPException(status_code=401, detail="No valid session found. Please authenticate first.")
+        
+        user_email = user_info.get('email')
+        if not user_email:
+            raise HTTPException(status_code=400, detail="User email not found in session data")
+        
+        print(f"\n🗑️ API REQUEST: REMOVE_PROSPECT_FROM_LIST for {user_email}")
+        print(f"List ID: {list_id}")
+        print(f"Prospect Index: {prospect_index}")
+        
+        # Remove prospect from list
+        success = prospects_list_manager.remove_prospect_from_list(
+            user_email=user_email,
+            list_id=list_id,
+            prospect_index=prospect_index
+        )
+        
+        if not success:
+            raise HTTPException(status_code=404, detail="List not found or failed to remove prospect")
+        
+        print(f"✅ Removed prospect from list: {list_id} for {user_email}")
+        
+        return {
+            "success": True,
+            "list_id": list_id,
+            "message": "Prospect removed from list successfully"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Error removing prospect from list: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to remove prospect from list: {str(e)}")
 
 
 if __name__ == "__main__":

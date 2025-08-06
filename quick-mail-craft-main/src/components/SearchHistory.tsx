@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { ChevronDown, ChevronUp, History, Search, Calendar, Users, Trash2 } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { ChevronDown, ChevronUp, History, Search, Calendar, Users, Trash2, AlertTriangle } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
 import { API_CONFIG } from '@/config/api';
 import { getSessionId } from '@/utils/session';
@@ -31,6 +32,8 @@ const SearchHistory: React.FC<SearchHistoryProps> = ({ onLoadSearch }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [expandedSearch, setExpandedSearch] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [searchToDelete, setSearchToDelete] = useState<string | null>(null);
 
   useEffect(() => {
     fetchSearchHistory();
@@ -103,6 +106,18 @@ const SearchHistory: React.FC<SearchHistoryProps> = ({ onLoadSearch }) => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleDeleteClick = (searchId: string) => {
+    setSearchToDelete(searchId);
+    setDeleteConfirmOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!searchToDelete) return;
+    await deleteSearch(searchToDelete);
+    setDeleteConfirmOpen(false);
+    setSearchToDelete(null);
   };
 
   const deleteSearch = async (searchId: string) => {
@@ -273,7 +288,7 @@ const SearchHistory: React.FC<SearchHistoryProps> = ({ onLoadSearch }) => {
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => deleteSearch(historyItem.search_id)}
+                            onClick={() => handleDeleteClick(historyItem.search_id)}
                             className="text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
                           >
                             <Trash2 className="w-3 h-3" />
@@ -320,6 +335,39 @@ const SearchHistory: React.FC<SearchHistoryProps> = ({ onLoadSearch }) => {
           </CollapsibleContent>
         </Collapsible>
       </CardHeader>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center text-red-600">
+              <AlertTriangle className="w-5 h-5 mr-2" />
+              Confirm Deletion
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-gray-700">
+              Are you sure you want to delete this search history? This action cannot be undone.
+            </p>
+            <div className="flex justify-end space-x-3">
+              <Button
+                variant="outline"
+                onClick={() => setDeleteConfirmOpen(false)}
+                className="border-gray-300 text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={confirmDelete}
+                className="bg-red-600 hover:bg-red-700 text-white"
+              >
+                <Trash2 className="w-4 h-4 mr-1" />
+                Delete
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 };
