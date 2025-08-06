@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { toast } from '@/components/ui/sonner';
 import SearchFormWithIcons from './SearchFormWithIcons';
 import SearchResults from './SearchResults';
+import SearchHistory from './SearchHistory';
 import LeadDetailsDialog from '@/components/LeadDetailsDialog';
 import { API_CONFIG } from '@/config/api';
 import { getSessionId } from '@/utils/session';
@@ -230,6 +231,51 @@ const FindLeadsContent = () => {
     localStorage.setItem('selectedEmails', JSON.stringify(emails));
   };
 
+  const handleLoadSearch = (searchParams: any, results: Lead[]) => {
+    console.log('\n📥 FRONTEND: HANDLING LOAD SEARCH');
+    console.log('📝 Received search params:', searchParams);
+    console.log('📋 Received results count:', results?.length || 0);
+    
+    // Convert search params back to form data format
+    const convertedFormData: FormData = {
+      jobTitles: Array.isArray(searchParams.job_titles) ? searchParams.job_titles.join(', ') : '',
+      companyNames: Array.isArray(searchParams.company_names) ? searchParams.company_names.join(', ') : '',
+      companyDomains: Array.isArray(searchParams.company_domains) ? searchParams.company_domains.join(', ') : '',
+      departments: Array.isArray(searchParams.departments) ? searchParams.departments.join(', ') : '',
+      companySize: Array.isArray(searchParams.company_size) ? searchParams.company_size : [],
+      companyRevenue: Array.isArray(searchParams.company_revenue) ? searchParams.company_revenue : [],
+      companyIndustry: Array.isArray(searchParams.company_industry) ? searchParams.company_industry : [],
+      companySubIndustry: Array.isArray(searchParams.company_sub_industry) ? searchParams.company_sub_industry : [],
+      seniority: Array.isArray(searchParams.seniority) ? searchParams.seniority : [],
+      technologies: Array.isArray(searchParams.technologies) ? searchParams.technologies.join(', ') : '',
+      locationPreference: searchParams.location_preference || '',
+      countries: Array.isArray(searchParams.countries) ? searchParams.countries : [],
+      states: Array.isArray(searchParams.states) ? searchParams.states : [],
+      cities: Array.isArray(searchParams.cities) ? searchParams.cities : []
+    };
+
+    console.log('🔄 Converted form data:', {
+      jobTitles: convertedFormData.jobTitles,
+      companyNames: convertedFormData.companyNames,
+      companySize: convertedFormData.companySize,
+      seniority: convertedFormData.seniority,
+      countries: convertedFormData.countries,
+      // ... other non-empty fields
+    });
+
+    // Update form data and results
+    console.log('📝 Updating form data state...');
+    setFormData(convertedFormData);
+    
+    console.log('📋 Updating leads state...');
+    setLeads(results);
+    
+    console.log('📊 Updating search params state...');
+    setLastSearchParams(searchParams);
+    
+    console.log('✅ Search history loaded successfully into form and results');
+  };
+
   const getLeadDisplayName = (lead: Lead) => {
     return lead.personal_information?.full_name || 'Unknown Lead';
   };
@@ -273,6 +319,7 @@ const FindLeadsContent = () => {
       {/* Main Content */}
       <div className="bg-gray-50 p-6">
         <div className="max-w-7xl mx-auto space-y-6">
+        
         <SearchFormWithIcons
           formData={formData}
           onInputChange={handleInputChange}
@@ -282,6 +329,8 @@ const FindLeadsContent = () => {
           getFilledFieldsCount={getFilledFieldsCount}
           onRemoveFilter={handleRemoveFilter}
         />
+        
+        <SearchHistory onLoadSearch={handleLoadSearch} />
 
         <SearchResults
           leads={leads}

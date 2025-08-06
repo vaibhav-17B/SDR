@@ -22,6 +22,7 @@ from utils import build_auth_html_response,email_helper
 from leads_logic import LeadFinder
 from apscheduler.schedulers.background import BackgroundScheduler
 from csv_database import CSVUserDatabase
+from search_history_manager import SearchHistoryManager
 
 
 app = FastAPI()
@@ -30,13 +31,14 @@ lead_finder=LeadFinder(test=True)
 user_manager=UserManager(redis_client=RedisManager)
 email_sender=email_helper()
 csv_db = CSVUserDatabase()  # Initialize CSV database
+search_history_manager = SearchHistoryManager()  # Initialize search history manager
 scheduler = BackgroundScheduler(timezone="UTC")
 scheduler.start()
 
 
 ALLOWED_ORIGINS = [
     "https://preview--quick-mail-craft.lovable.app",
-    "https://533053b84319.ngrok-free.app",  
+    "https://bd635ea278ef.ngrok-free.app",  
     "http://localhost:8080",                          
 ]
 
@@ -74,7 +76,7 @@ TOKENS_FOLDER = 'tokens'
 os.makedirs(TOKENS_FOLDER, exist_ok=True)
 
 # Add environment variable or configuration
-REDIRECT_BASE_URL = os.getenv("REDIRECT_BASE_URL", "https://533053b84319.ngrok-free.app")
+REDIRECT_BASE_URL = os.getenv("REDIRECT_BASE_URL", "https://bd635ea278ef.ngrok-free.app")
 print(f"REDIRECT_BASE_URL: {REDIRECT_BASE_URL}\n")
 
 
@@ -393,6 +395,40 @@ async def check_auth(request: Request):
                             "experience": work_experience
                         })
                         print(f"DEBUG: User {user_email} has complete profile in CSV")
+                        
+                        # Create token file for user with complete profile if it doesn't exist
+                        if not token_file:
+                            try:
+                                # Extract domain from email
+                                domain = user_manager.get_domain_from_email(user_email)
+                                
+                                # Create filename
+                                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                                username = auth_data['name'].replace(' ', '_').replace('.', '_')
+                                filename = f"{session_id}_{domain}_{username}_{timestamp}.json"
+                                filepath = os.path.join(TOKENS_FOLDER, filename)
+                                
+                                # Create permanent user data
+                                token_user_data = {
+                                    'name': auth_data['name'],
+                                    'email': auth_data['email'],
+                                    'company_name': company_name,
+                                    'designation': designation,
+                                    'experience': work_experience,
+                                    'credentials': auth_data['credentials'],
+                                    'profile_complete': True,
+                                    'created_at': datetime.now().isoformat(),
+                                    'last_updated': datetime.now().isoformat()
+                                }
+                                
+                                # Save permanent token file
+                                with open(filepath, 'w') as f:
+                                    json.dump(token_user_data, f, indent=2)
+                                
+                                print(f"✅ Token file created for existing user: {filepath}")
+                                
+                            except Exception as e:
+                                print(f"⚠️ Warning: Could not create token file for existing user: {e}")
                     else:
                         print(f"DEBUG: User {user_email} has incomplete profile in CSV - missing fields")
                 
@@ -484,6 +520,48 @@ async def check_auth_status_by_state(auth_state_id: str):
                         "experience": work_experience
                     })
                     print(f"DEBUG AUTH-STATUS: User {user_email} has complete profile in CSV")
+                    
+                    # Create token file for user with complete profile if it doesn't exist
+                    session_id = session_data.get('session_id')
+                    if session_id:
+                        token_file = user_manager.get_user_token_file(session_id)
+                        if not token_file:
+                            try:
+                                # Extract domain from email
+                                domain = user_manager.get_domain_from_email(user_email)
+                                
+                                # Create filename
+                                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                                username = session_data.get('name', 'unknown').replace(' ', '_').replace('.', '_')
+                                filename = f"{session_id}_{domain}_{username}_{timestamp}.json"
+                                filepath = os.path.join(TOKENS_FOLDER, filename)
+                                
+                                # Get credentials from Redis session
+                                auth_data = RedisManager.get_session_data(session_id)
+                                if auth_data and 'credentials' in auth_data:
+                                    # Create permanent user data
+                                    token_user_data = {
+                                        'name': session_data.get('name'),
+                                        'email': session_data.get('email'),
+                                        'company_name': company_name,
+                                        'designation': designation,
+                                        'experience': work_experience,
+                                        'credentials': auth_data['credentials'],
+                                        'profile_complete': True,
+                                        'created_at': datetime.now().isoformat(),
+                                        'last_updated': datetime.now().isoformat()
+                                    }
+                                    
+                                    # Save permanent token file
+                                    with open(filepath, 'w') as f:
+                                        json.dump(token_user_data, f, indent=2)
+                                    
+                                    print(f"✅ Token file created for existing user in auth-status: {filepath}")
+                                else:
+                                    print(f"⚠️ Warning: No credentials found in Redis for session {session_id}")
+                                
+                            except Exception as e:
+                                print(f"⚠️ Warning: Could not create token file for existing user in auth-status: {e}")
                 else:
                     print(f"DEBUG AUTH-STATUS: User {user_email} has incomplete profile in CSV - missing fields")
             
@@ -765,17 +843,230 @@ async def fetch_leads_v3(
             if value:  # Only include non-empty values
                 search_criteria[key] = value
 
+        # Save search history for authenticated users
+        user_email = None
+        if x_session_id:
+            # Get user email from session
+            auth_data = RedisManager.get_session_data(x_session_id)
+            if auth_data:
+                user_email = auth_data.get('email')
+            else:
+                # Try to get from token file
+                token_file = user_manager.get_user_token_file(x_session_id)
+                if token_file:
+                    user_info = user_manager.get_user_info_from_token_file(token_file)
+                    if user_info:
+                        user_email = user_info.get('email')
+        
+        # Save search history if user is identified
+        search_id = None
+        if user_email and filtered_leads:
+            print(f"💾 SAVING SEARCH HISTORY:")
+            print(f"   User: {user_email}")
+            print(f"   Results count: {len(filtered_leads)}")
+            print(f"   Search params: {list(search_criteria.keys())}")
+            
+            search_id = search_history_manager.save_search_history(
+                user_email=user_email,
+                search_params=search_criteria,
+                search_results=filtered_leads
+            )
+            print(f"✅ Search history saved with ID: {search_id}")
+        elif user_email and not filtered_leads:
+            print(f"⚠️ No search history saved: No results found for user {user_email}")
+        elif not user_email:
+            print(f"⚠️ No search history saved: User not authenticated")
+
         return {
             "success": True,
             "leads": filtered_leads,
             "total_count": num_leads,
             "search_criteria": search_criteria,
-            "session_id": x_session_id
+            "session_id": x_session_id,
+            "search_id": search_id
         }
 
     except Exception as e:
         print(f"Error in fetch_leads: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+
+@app.get("/api/search-history")
+async def get_search_history(
+    request: Request,
+    limit: int = 10,
+    x_session_id: Optional[str] = Header(None, alias="X-Session-ID")
+):
+    """Get user's search history"""
+    print(f"\n🔍 API CALL: GET_SEARCH_HISTORY")
+    print(f"📝 Parameters: limit={limit}, session_id={x_session_id}")
+    
+    try:
+        if not x_session_id:
+            print(f"❌ API ERROR: No session ID provided")
+            raise HTTPException(status_code=401, detail="No session ID provided. Please authenticate first.")
+        
+        # Get user email from session
+        user_email = None
+        auth_data = RedisManager.get_session_data(x_session_id)
+        if auth_data:
+            user_email = auth_data.get('email')
+            print(f"✅ Found user email from Redis: {user_email}")
+        else:
+            # Try to get from token file
+            token_file = user_manager.get_user_token_file(x_session_id)
+            if token_file:
+                user_info = user_manager.get_user_info_from_token_file(token_file)
+                if user_info:
+                    user_email = user_info.get('email')
+                    print(f"✅ Found user email from token file: {user_email}")
+        
+        if not user_email:
+            print(f"❌ API ERROR: User email not found for session {x_session_id}")
+            raise HTTPException(status_code=401, detail="User email not found. Please authenticate first.")
+        
+        # Get search history
+        print(f"📊 Fetching search history for user: {user_email} (limit: {limit})")
+        history = search_history_manager.get_user_search_history(user_email, limit=limit)
+        
+        response_data = {
+            "success": True,
+            "user_email": user_email,
+            "search_history": history,
+            "total_searches": len(history)
+        }
+        
+        print(f"✅ API SUCCESS: GET_SEARCH_HISTORY")
+        print(f"📤 Response: Found {len(history)} search records for {user_email}")
+        for i, search in enumerate(history):
+            print(f"   Search {i+1}: {search['search_id']} - {search['search_date']} - {search['total_results']} results")
+        
+        return response_data
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ API ERROR: GET_SEARCH_HISTORY failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get search history: {str(e)}")
+
+
+@app.get("/api/search-history/{search_id}")
+async def get_search_by_id(
+    search_id: str,
+    request: Request,
+    x_session_id: Optional[str] = Header(None, alias="X-Session-ID")
+):
+    """Get specific search by ID"""
+    print(f"\n🔍 API CALL: GET_SEARCH_BY_ID")
+    print(f"📝 Parameters: search_id={search_id}, session_id={x_session_id}")
+    
+    try:
+        if not x_session_id:
+            print(f"❌ API ERROR: No session ID provided")
+            raise HTTPException(status_code=401, detail="No session ID provided. Please authenticate first.")
+        
+        # Get user email from session
+        user_email = None
+        auth_data = RedisManager.get_session_data(x_session_id)
+        if auth_data:
+            user_email = auth_data.get('email')
+            print(f"✅ Found user email from Redis: {user_email}")
+        else:
+            # Try to get from token file
+            token_file = user_manager.get_user_token_file(x_session_id)
+            if token_file:
+                user_info = user_manager.get_user_info_from_token_file(token_file)
+                if user_info:
+                    user_email = user_info.get('email')
+                    print(f"✅ Found user email from token file: {user_email}")
+        
+        if not user_email:
+            print(f"❌ API ERROR: User email not found for session {x_session_id}")
+            raise HTTPException(status_code=401, detail="User email not found. Please authenticate first.")
+        
+        # Get specific search
+        print(f"🔎 Searching for specific search ID: {search_id} for user: {user_email}")
+        search_data = search_history_manager.get_search_by_id(user_email, search_id)
+        
+        if not search_data:
+            print(f"❌ API ERROR: Search {search_id} not found for user {user_email}")
+            raise HTTPException(status_code=404, detail="Search not found")
+        
+        response_data = {
+            "success": True,
+            "search_data": search_data
+        }
+        
+        print(f"✅ API SUCCESS: GET_SEARCH_BY_ID")
+        print(f"📤 Response: Found search {search_id} - {search_data['search_date']} - {search_data['total_results']} results")
+        print(f"📊 Search params: {list(search_data['search_params'].keys())}")
+        
+        return response_data
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ API ERROR: GET_SEARCH_BY_ID failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get search: {str(e)}")
+
+
+@app.delete("/api/search-history/{search_id}")
+async def delete_search_history(
+    search_id: str,
+    request: Request,
+    x_session_id: Optional[str] = Header(None, alias="X-Session-ID")
+):
+    """Delete specific search from history"""
+    print(f"\n🗑️ API CALL: DELETE_SEARCH_HISTORY")
+    print(f"📝 Parameters: search_id={search_id}, session_id={x_session_id}")
+    
+    try:
+        if not x_session_id:
+            print(f"❌ API ERROR: No session ID provided")
+            raise HTTPException(status_code=401, detail="No session ID provided. Please authenticate first.")
+        
+        # Get user email from session
+        user_email = None
+        auth_data = RedisManager.get_session_data(x_session_id)
+        if auth_data:
+            user_email = auth_data.get('email')
+            print(f"✅ Found user email from Redis: {user_email}")
+        else:
+            # Try to get from token file
+            token_file = user_manager.get_user_token_file(x_session_id)
+            if token_file:
+                user_info = user_manager.get_user_info_from_token_file(token_file)
+                if user_info:
+                    user_email = user_info.get('email')
+                    print(f"✅ Found user email from token file: {user_email}")
+        
+        if not user_email:
+            print(f"❌ API ERROR: User email not found for session {x_session_id}")
+            raise HTTPException(status_code=401, detail="User email not found. Please authenticate first.")
+        
+        # Delete search
+        print(f"🗑️ Attempting to delete search {search_id} for user: {user_email}")
+        success = search_history_manager.delete_search_history(user_email, search_id)
+        
+        if not success:
+            print(f"❌ API ERROR: Failed to delete search {search_id}")
+            raise HTTPException(status_code=500, detail="Failed to delete search")
+        
+        response_data = {
+            "success": True,
+            "message": f"Search {search_id} deleted successfully"
+        }
+        
+        print(f"✅ API SUCCESS: DELETE_SEARCH_HISTORY")
+        print(f"📤 Response: Successfully deleted search {search_id} for {user_email}")
+        
+        return response_data
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ API ERROR: DELETE_SEARCH_HISTORY failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to delete search: {str(e)}")
 
 
 @app.post("/api/change-profile")

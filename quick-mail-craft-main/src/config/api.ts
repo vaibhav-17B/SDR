@@ -1,4 +1,4 @@
 
 export const API_CONFIG = {
-  BASE_URL: 'https://533053b84319.ngrok-free.app'
+  BASE_URL: 'https://bd635ea278ef.ngrok-free.app'
 };
