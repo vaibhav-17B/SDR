@@ -169,7 +169,7 @@ const Studio = ({ onAuthChange }: StudioProps) => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
           <p className="mt-2 text-gray-700">Loading Studio...</p>
@@ -180,7 +180,7 @@ const Studio = ({ onAuthChange }: StudioProps) => {
 
   if (!sessionData?.isAuthenticated || !sessionData?.profileComplete) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <Card className="w-full max-w-md text-center border-gray-200">
           <CardHeader>
             <CardTitle className="text-gray-900">Authentication Required</CardTitle>
@@ -202,7 +202,7 @@ const Studio = ({ onAuthChange }: StudioProps) => {
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-gray-50">
       {/* Hero Section */}
       <div className="bg-gray-900 text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -275,7 +275,7 @@ const Studio = ({ onAuthChange }: StudioProps) => {
       <div className="bg-gray-50 min-h-screen">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Email Composition Workspace */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="bg-white rounded-xl shadow-2xl hover:shadow-3xl transition-shadow duration-300 border border-gray-100 overflow-hidden">
             {/* Workspace Header */}
             <div className="bg-gradient-to-r from-gray-900 to-gray-800 text-white p-6">
               <div className="flex items-center space-x-3 mb-4">
@@ -305,7 +305,7 @@ const Studio = ({ onAuthChange }: StudioProps) => {
             </div>
             
             {/* Email Composer */}
-            <div className="p-6">
+            <div className="p-8">
               <EmailComposer />
             </div>
           </div>

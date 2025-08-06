@@ -432,7 +432,7 @@ const ProspectsList: React.FC<ProspectsListProps> = ({ onSelectProspectsForNewLi
         </div>
         <Dialog open={isNewListDialogOpen} onOpenChange={setIsNewListDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-gradient-to-r from-gray-900 to-gray-800 hover:from-gray-800 hover:to-gray-700 text-white shadow-lg hover:shadow-xl transition-all duration-200">
+            <Button className="bg-gradient-to-r from-gray-900 to-gray-800 hover:from-gray-800 hover:to-gray-700 text-white shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-1">
               <Plus className="w-4 h-4 mr-2" />
               Create New List
             </Button>
@@ -450,7 +450,9 @@ const ProspectsList: React.FC<ProspectsListProps> = ({ onSelectProspectsForNewLi
                   value={newListName}
                   onChange={(e) => setNewListName(e.target.value)}
                   placeholder="e.g., Tech Startup CEOs, Marketing Directors"
-                  className="w-full border-gray-300 focus:border-gray-900 focus:ring-gray-900"
+                  className={`w-full border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 shadow-md hover:shadow-lg focus:shadow-lg transition-all duration-300 ${
+                    newListName.trim() ? 'bg-[#E8F0FE] border-blue-300' : ''
+                  }`}
                 />
               </div>
               <div>
@@ -461,7 +463,9 @@ const ProspectsList: React.FC<ProspectsListProps> = ({ onSelectProspectsForNewLi
                   value={newListDescription}
                   onChange={(e) => setNewListDescription(e.target.value)}
                   placeholder="Describe the purpose and target audience of this list"
-                  className="w-full border-gray-300 focus:border-gray-900 focus:ring-gray-900"
+                  className={`w-full border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 shadow-md hover:shadow-lg focus:shadow-lg transition-all duration-300 ${
+                    newListDescription.trim() ? 'bg-[#E8F0FE] border-blue-300' : ''
+                  }`}
                   rows={3}
                 />
               </div>
@@ -496,7 +500,11 @@ const ProspectsList: React.FC<ProspectsListProps> = ({ onSelectProspectsForNewLi
         ) : (
           <div className="grid gap-4">
             {prospectsLists.map((listItem) => (
-              <Card key={listItem.list_id} className="border border-gray-200 hover:border-gray-300 transition-all duration-200 hover:shadow-lg bg-gradient-to-br from-white to-gray-50">
+              <Card 
+                key={listItem.list_id} 
+                className="border border-gray-200 hover:border-gray-300 transition-all duration-200 shadow-lg hover:shadow-2xl bg-gradient-to-br from-white to-gray-50 cursor-pointer"
+                onClick={() => setExpandedList(expandedList === listItem.list_id ? null : listItem.list_id)}
+              >
                 <CardContent className="p-6">
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex-1">
@@ -508,7 +516,10 @@ const ProspectsList: React.FC<ProspectsListProps> = ({ onSelectProspectsForNewLi
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => handleDeleteClick(listItem.list_id, listItem.list_name)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteClick(listItem.list_id, listItem.list_name);
+                      }}
                       className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200 hover:border-red-300"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -532,21 +543,19 @@ const ProspectsList: React.FC<ProspectsListProps> = ({ onSelectProspectsForNewLi
                     open={expandedList === listItem.list_id} 
                     onOpenChange={(open) => setExpandedList(open ? listItem.list_id : null)}
                   >
-                    <CollapsibleTrigger asChild>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="text-sm text-gray-600 hover:text-gray-900 p-0 h-auto font-medium"
-                      >
-                        {expandedList === listItem.list_id ? 'Hide' : 'View'} Prospects
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600 font-medium">
+                        Click anywhere to {expandedList === listItem.list_id ? 'hide' : 'view'} prospects
+                      </span>
+                      <div className="flex items-center text-gray-600">
                         {expandedList === listItem.list_id ? 
-                          <ChevronUp className="w-4 h-4 ml-1" /> : 
-                          <ChevronDown className="w-4 h-4 ml-1" />
+                          <ChevronUp className="w-5 h-5" /> : 
+                          <ChevronDown className="w-5 h-5" />
                         }
-                      </Button>
-                    </CollapsibleTrigger>
+                      </div>
+                    </div>
                     
-                    <CollapsibleContent className="mt-4">
+                    <CollapsibleContent className="mt-4" onClick={(e) => e.stopPropagation()}>
                       <div className="bg-gray-50 p-4 rounded-lg border max-h-96 overflow-y-auto">
                         <h5 className="text-sm font-medium text-gray-700 mb-4">Prospects in this list:</h5>
                         {listItem.prospects.length === 0 ? (

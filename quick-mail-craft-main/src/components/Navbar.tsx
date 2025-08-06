@@ -99,7 +99,7 @@ const Navbar = ({ userEmail, isAuthenticated, onSignOut }: NavbarProps) => {
   };
 
   return (
-    <nav className="bg-white border-b border-gray-200 shadow-sm">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 shadow-xl">
       <div className="w-full px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16 max-w-none">
           <div className="flex items-center space-x-8 flex-shrink-0">
@@ -112,9 +112,9 @@ const Navbar = ({ userEmail, isAuthenticated, onSignOut }: NavbarProps) => {
               <Link to="/">
                 <Button 
                   variant="ghost"
-                  className={`flex items-center space-x-2 ${
+                  className={`flex items-center space-x-2 shadow-md hover:shadow-lg transition-shadow duration-300 ${
                     isActive('/') 
-                      ? 'bg-gray-900 text-white' 
+                      ? 'bg-gray-900 text-white shadow-lg' 
                       : 'border-gray-300 text-gray-900 hover:bg-gray-900 hover:text-white'
                   }`}
                 >
@@ -125,9 +125,9 @@ const Navbar = ({ userEmail, isAuthenticated, onSignOut }: NavbarProps) => {
               <Link to="/prospects">
                 <Button 
                   variant="ghost"
-                  className={`flex items-center space-x-2 ${
+                  className={`flex items-center space-x-2 shadow-md hover:shadow-lg transition-shadow duration-300 ${
                     isActive('/prospects')
-                      ? 'bg-gray-900 text-white' 
+                      ? 'bg-gray-900 text-white shadow-lg' 
                       : 'border-gray-300 text-gray-900 hover:bg-gray-900 hover:text-white'
                   }`}
                 >
@@ -138,9 +138,9 @@ const Navbar = ({ userEmail, isAuthenticated, onSignOut }: NavbarProps) => {
               <Link to="/studio">
                 <Button 
                   variant="ghost"
-                  className={`flex items-center space-x-2 ${
+                  className={`flex items-center space-x-2 shadow-md hover:shadow-lg transition-shadow duration-300 ${
                     isActive('/studio')
-                      ? 'bg-gray-900 text-white' 
+                      ? 'bg-gray-900 text-white shadow-lg' 
                       : 'border-gray-300 text-gray-900 hover:bg-gray-900 hover:text-white'
                   }`}
                 >
@@ -164,7 +164,7 @@ const Navbar = ({ userEmail, isAuthenticated, onSignOut }: NavbarProps) => {
               <Link to="/user-info">
                 <Button 
                   variant="outline"
-                  className="border-gray-300 text-gray-900 hover:bg-gray-50"
+                  className="border-gray-300 text-gray-900 hover:bg-gray-50 shadow-md hover:shadow-lg transition-shadow duration-300"
                 >
                   Get Started
                 </Button>

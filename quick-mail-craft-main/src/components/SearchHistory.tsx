@@ -173,7 +173,46 @@ const SearchHistory: React.FC<SearchHistoryProps> = ({ onLoadSearch }) => {
     }
   };
 
-  const loadSearch = (historyItem: SearchHistoryItem) => {
+  const loadSearchWithFullResults = async (historyItem: SearchHistoryItem) => {
+    // If results are empty, try to fetch full search data
+    if (!historyItem.results || historyItem.results.length === 0) {
+      console.log('📥 Results empty, attempting to fetch full search data...');
+      
+      try {
+        const sessionId = getSessionId();
+        if (!sessionId) {
+          console.log('❌ No session ID for fetching full search data');
+          return historyItem;
+        }
+
+        const response = await fetch(`${API_CONFIG.BASE_URL}/api/search-history/${historyItem.search_id}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'ngrok-skip-browser-warning': 'true',
+            'X-Session-ID': sessionId
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.search_data && data.search_data.results) {
+            console.log('✅ Retrieved full search data with', data.search_data.results.length, 'results');
+            return {
+              ...historyItem,
+              results: data.search_data.results
+            };
+          }
+        }
+      } catch (error) {
+        console.error('❌ Error fetching full search data:', error);
+      }
+    }
+    
+    return historyItem;
+  };
+
+  const loadSearch = async (historyItem: SearchHistoryItem) => {
     console.log('\n🔄 FRONTEND ACTION: LOAD_SEARCH_HISTORY');
     console.log('📝 Loading search:', {
       searchId: historyItem.search_id,
@@ -182,17 +221,47 @@ const SearchHistory: React.FC<SearchHistoryProps> = ({ onLoadSearch }) => {
       searchParams: Object.keys(historyItem.search_params || {})
     });
     
-    if (onLoadSearch) {
-      console.log('🔧 Calling onLoadSearch with params and results');
-      console.log('📊 Search params being loaded:', historyItem.search_params);
-      console.log('📋 Results being loaded:', `${historyItem.results?.length || 0} leads`);
+    // Validate data before loading
+    if (!historyItem.search_params) {
+      console.error('❌ Error: No search params found in history item');
+      toast.error('Invalid search data - missing parameters');
+      return;
+    }
+
+    try {
+      // Try to get full results if needed
+      const fullHistoryItem = await loadSearchWithFullResults(historyItem);
+
+      // Handle missing or invalid results
+      const safeResults: Lead[] = Array.isArray(fullHistoryItem.results) ? fullHistoryItem.results : [];
+      if (!fullHistoryItem.results || !Array.isArray(fullHistoryItem.results)) {
+        console.warn('⚠️ Warning: No results found in history item, using empty array');
+      }
       
-      onLoadSearch(historyItem.search_params, historyItem.results);
-      
-      console.log('✅ Search loaded successfully');
-      toast.success(`Loaded search from ${historyItem.search_date}`);
-    } else {
-      console.log('⚠️ onLoadSearch callback not provided');
+      if (onLoadSearch) {
+        try {
+          console.log('🔧 Calling onLoadSearch with params and results');
+          console.log('📊 Search params being loaded:', fullHistoryItem.search_params);
+          console.log('📋 Results being loaded:', `${safeResults.length} leads`);
+          
+          // Ensure we're passing valid data
+          const validSearchParams = fullHistoryItem.search_params || {};
+          
+          onLoadSearch(validSearchParams, safeResults);
+          
+          console.log('✅ Search loaded successfully');
+          toast.success(`Loaded search from ${fullHistoryItem.search_date} (${safeResults.length} results)`);
+        } catch (error) {
+          console.error('❌ Error during search load:', error);
+          toast.error('Failed to load search history');
+        }
+      } else {
+        console.log('⚠️ onLoadSearch callback not provided');
+        toast.error('Search load functionality not available');
+      }
+    } catch (error) {
+      console.error('❌ Error in loadSearch:', error);
+      toast.error('Failed to load search data');
     }
   };
 
@@ -237,20 +306,17 @@ const SearchHistory: React.FC<SearchHistoryProps> = ({ onLoadSearch }) => {
   }
 
   return (
-    <Card className="border-gray-200 shadow-sm">
-      <CardHeader className="pb-3">
+    <Card className="border-gray-200 shadow-xl hover:shadow-2xl transition-shadow duration-300">
+      <CardHeader className="pb-3 px-6 pt-6">
         <Collapsible open={showHistory} onOpenChange={setShowHistory}>
           <CollapsibleTrigger asChild>
-            <Button 
-              variant="ghost" 
-              className="w-full justify-between p-0 h-auto hover:bg-transparent"
-            >
+            <div className="w-full flex justify-between items-center cursor-pointer p-3 rounded-lg hover:bg-gray-50 transition-all duration-200">
               <CardTitle className="text-lg font-semibold text-gray-900 flex items-center">
                 <History className="w-5 h-5 mr-2 text-gray-600" />
                 Search History ({searchHistory.length})
               </CardTitle>
               {showHistory ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-            </Button>
+            </div>
           </CollapsibleTrigger>
           
           <CollapsibleContent className="mt-4">
@@ -262,72 +328,77 @@ const SearchHistory: React.FC<SearchHistoryProps> = ({ onLoadSearch }) => {
                 </div>
               ) : (
                 searchHistory.map((historyItem) => (
-                  <div key={historyItem.search_id} className="border border-gray-200 rounded-lg">
-                    <div className="p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center space-x-3">
-                          <div className="flex items-center space-x-2 text-sm text-gray-600">
-                            <Calendar className="w-4 h-4" />
-                            <span>{historyItem.search_date} at {historyItem.search_time}</span>
-                          </div>
-                          <div className="flex items-center space-x-2 text-sm text-gray-600">
-                            <Users className="w-4 h-4" />
-                            <span>{historyItem.total_results} results</span>
-                          </div>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => loadSearch(historyItem)}
-                            className="text-xs"
-                          >
-                            <Search className="w-3 h-3 mr-1" />
-                            Load
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleDeleteClick(historyItem.search_id)}
-                            className="text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </Button>
-                        </div>
-                      </div>
-
-                      <Collapsible 
-                        open={expandedSearch === historyItem.search_id} 
-                        onOpenChange={(open) => setExpandedSearch(open ? historyItem.search_id : null)}
-                      >
-                        <CollapsibleTrigger asChild>
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className="text-xs text-gray-600 hover:text-gray-900 p-0 h-auto"
-                          >
-                            {expandedSearch === historyItem.search_id ? 'Hide' : 'Show'} Search Parameters
-                            {expandedSearch === historyItem.search_id ? 
-                              <ChevronUp className="w-3 h-3 ml-1" /> : 
-                              <ChevronDown className="w-3 h-3 ml-1" />
-                            }
-                          </Button>
-                        </CollapsibleTrigger>
-                        
-                        <CollapsibleContent className="mt-3">
-                          <div className="bg-gray-50 p-3 rounded border">
-                            <h5 className="text-xs font-medium text-gray-700 mb-2">Search Parameters:</h5>
-                            <div className="grid grid-cols-1 gap-1">
-                              {formatSearchParams(historyItem.search_params).map((param, index) => (
-                                <div key={index} className="text-xs text-gray-600">
-                                  • {param}
-                                </div>
-                              ))}
+                  <div key={historyItem.search_id} className="border border-gray-200 rounded-lg shadow-lg hover:shadow-xl transition-shadow duration-300">
+                    <Collapsible 
+                      open={expandedSearch === historyItem.search_id} 
+                      onOpenChange={(open) => setExpandedSearch(open ? historyItem.search_id : null)}
+                    >
+                      <CollapsibleTrigger asChild>
+                        <div className="p-4 cursor-pointer hover:bg-gray-50 transition-all duration-200 rounded-lg">
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center space-x-3">
+                              <div className="flex items-center space-x-2 text-sm text-gray-600">
+                                <Calendar className="w-4 h-4" />
+                                <span>{historyItem.search_date} at {historyItem.search_time}</span>
+                              </div>
+                              <div className="flex items-center space-x-2 text-sm text-gray-600">
+                                <Users className="w-4 h-4" />
+                                <span>{historyItem.total_results} results</span>
+                              </div>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  loadSearch(historyItem);
+                                }}
+                                className="text-xs shadow-md hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+                                disabled={!historyItem.search_params}
+                              >
+                                <Search className="w-3 h-3 mr-1" />
+                                Load
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteClick(historyItem.search_id);
+                                }}
+                                className="text-xs text-red-600 hover:text-red-700 hover:bg-red-50 shadow-md hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </Button>
                             </div>
                           </div>
-                        </CollapsibleContent>
-                      </Collapsible>
-                    </div>
+
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs text-gray-600">
+                              Click anywhere to {expandedSearch === historyItem.search_id ? 'hide' : 'show'} search parameters
+                            </span>
+                            {expandedSearch === historyItem.search_id ? 
+                              <ChevronUp className="w-4 h-4 text-gray-400" /> : 
+                              <ChevronDown className="w-4 h-4 text-gray-400" />
+                            }
+                          </div>
+                        </div>
+                      </CollapsibleTrigger>
+                        
+                      <CollapsibleContent className="px-4 pb-4">
+                        <div className="bg-gray-50 p-3 rounded border mt-2">
+                          <h5 className="text-xs font-medium text-gray-700 mb-2">Search Parameters:</h5>
+                          <div className="grid grid-cols-1 gap-1">
+                            {formatSearchParams(historyItem.search_params).map((param, index) => (
+                              <div key={index} className="text-xs text-gray-600">
+                                • {param}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
                   </div>
                 ))
               )}

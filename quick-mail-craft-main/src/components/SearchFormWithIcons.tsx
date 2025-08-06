@@ -132,7 +132,7 @@ const SearchFormWithIcons = ({
   ];
 
   return (
-    <Card>
+    <Card className="shadow-xl hover:shadow-2xl transition-shadow duration-300">
       <CardHeader>
         <CardTitle className="flex items-center space-x-2">
           <Search className="w-5 h-5" />
@@ -166,7 +166,11 @@ const SearchFormWithIcons = ({
                   placeholder={field.placeholder}
                   value={formData[field.key as keyof LeadFormData] as string}
                   onChange={(e) => onInputChange(field.key, e.target.value)}
-                  className="w-full"
+                  className={`w-full shadow-md hover:shadow-lg focus:shadow-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 ${
+                    formData[field.key as keyof LeadFormData] && (formData[field.key as keyof LeadFormData] as string).trim()
+                      ? 'bg-[#E8F0FE] border-blue-300' 
+                      : ''
+                  }`}
                 />
               </div>
             );
@@ -193,7 +197,7 @@ const SearchFormWithIcons = ({
           <Button
             onClick={onSearch}
             disabled={!validateForm() || isSearching}
-            className="w-full"
+            className="w-full shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-1"
           >
             {isSearching ? (
               <>

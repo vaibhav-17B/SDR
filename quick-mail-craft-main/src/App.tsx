@@ -90,7 +90,8 @@ const AppContent = () => {
         isAuthenticated={authState.isAuthenticated}
         onSignOut={handleSignOut}
       />
-      <Routes>
+      <div className="pt-16">
+        <Routes>
         <Route path="/" element={<Onboard />} />
         <Route path="/user-info" element={<UserInfo onAuthChange={setAuthState} />} />
         <Route path="/prospects" element={<Prospects />} />
@@ -100,7 +101,8 @@ const AppContent = () => {
         <Route path="/email-composer" element={<Studio onAuthChange={setAuthState} />} />
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<NotFound />} />
-      </Routes>
+        </Routes>
+      </div>
     </div>
   );
 };

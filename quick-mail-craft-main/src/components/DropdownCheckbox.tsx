@@ -72,7 +72,9 @@ const DropdownCheckbox = ({
           readOnly
           disabled={disabled}
           onClick={() => !disabled && setIsOpen(!isOpen)}
-          className={`w-full pr-8 ${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
+          className={`w-full pr-8 shadow-md hover:shadow-lg focus:shadow-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 ${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'} ${
+            selected.length > 0 ? 'bg-[#E8F0FE] border-blue-300' : ''
+          }`}
         />
         <ChevronDown 
           className={`absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 transition-transform ${

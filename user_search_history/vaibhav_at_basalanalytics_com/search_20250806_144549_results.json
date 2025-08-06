@@ -1,8 +1,129 @@
 {
-  "list_id": "list_20250806_105647",
-  "list_name": "L1",
-  "description": "",
-  "prospects": [
+  "search_id": "search_20250806_144549",
+  "search_params": {
+    "countries": [
+      "United States"
+    ],
+    "states": [
+      "New York"
+    ]
+  },
+  "results": [
+    {
+      "personal_information": {
+        "full_name": "Tural Badirkhanli",
+        "first_name": "Tural",
+        "last_name": "Badirkhanli",
+        "linkedin_url": "https://www.linkedin.com/in/turalb",
+        "professional_headline": "Co-Founder at Stealth",
+        "professional_summary": "Interested in technology.",
+        "primary_professional_email": "tural@solidshape.com",
+        "picture_url": "https://static.licdn.com/aero-v1/sc/h/9c8pery4andzj6ohjkjp54ma2",
+        "location": {
+          "full_location": "San Francisco, California, United States",
+          "country": "United States",
+          "regions": [
+            "Americas",
+            "Northern America",
+            "AMER"
+          ]
+        }
+      },
+      "contact_information": {
+        "primary_email": "tural@solidshape.com"
+      },
+      "current_position": {
+        "title": "CEO",
+        "description": "Solidshape is an online platform that improves how contractors and designers discover, buy, and procure flooring and construction materials—all in one place.",
+        "department": "C-Suite",
+        "management_level": "C-Level",
+        "is_decision_maker": 1,
+        "total_experience_months": 179,
+        "total_experience_years": 14,
+        "total_experience_remaining_months": 11
+      },
+      "work_experience": [
+        {
+          "position_title": "CEO",
+          "company_name": "Solidshape",
+          "company_industry": "Technology, Information and Internet",
+          "company_size": "11-50 employees",
+          "location": "Palo Alto, California, United States",
+          "duration": "July 2019 - None",
+          "duration_months": 71,
+          "department": "C-Suite",
+          "management_level": "C-Level",
+          "is_current": true
+        },
+        {
+          "position_title": "Engineering",
+          "company_name": "Twitter",
+          "company_industry": "Software Development",
+          "company_size": "5001-10,000 employees",
+          "duration": "June 2014 - October 2018",
+          "duration_months": 52,
+          "department": "Engineering and Technical",
+          "management_level": "Specialist",
+          "is_current": false
+        },
+        {
+          "position_title": "Co-founder",
+          "company_name": "Namo Media (acquired by Twitter)",
+          "company_industry": "Advertising Services",
+          "company_size": "11-50 employees",
+          "location": "San Francisco, CA",
+          "duration": "February 2013 - June 2014",
+          "duration_months": 16,
+          "department": "C-Suite",
+          "management_level": "Founder",
+          "is_current": false
+        }
+      ],
+      "skills_and_expertise": {
+        "inferred_skills": [
+          "mobile advertising",
+          "ad serving",
+          "machine learning",
+          "mobile devices",
+          "mobile applications",
+          "technology",
+          "contractors",
+          "flooring",
+          "construction",
+          "communications",
+          "fashion",
+          "software",
+          "mobile",
+          "advertising",
+          "optimization",
+          "twitter",
+          "funding",
+          "investors",
+          "engineering"
+        ]
+      },
+      "educational_background": [
+        {
+          "degree": "BS Computer Science and Engineering",
+          "institution": "Massachusetts Institute of Technology",
+          "location": "77 Massachusetts Avenue; Address 2; Cambridge, MA 02139-4307, US",
+          "duration": "2004 - 2008"
+        },
+        {
+          "degree": "MEng, Computer Science and Engineering",
+          "institution": "Massachusetts Institute of Technology",
+          "location": "77 Massachusetts Avenue; Address 2; Cambridge, MA 02139-4307, US",
+          "duration": "2008 - 2009"
+        },
+        {
+          "degree": "BS, Computer Science and Engineering",
+          "institution": "Massachusetts Institute of Technology",
+          "location": "77 Massachusetts Avenue; Address 2; Cambridge, MA 02139-4307, US",
+          "duration": "2004 - 2008"
+        }
+      ],
+      "profile_index": 1
+    },
     {
       "personal_information": {
         "full_name": "kan kotecha",
@@ -210,8 +331,6 @@
       "profile_index": 3
     }
   ],
-  "total_count": 2,
-  "created_timestamp": "2025-08-06T10:56:47.011473",
-  "tags": [],
-  "last_updated": "2025-08-06T11:54:30.799968"
+  "total_count": 3,
+  "timestamp": "2025-08-06T14:45:49.727581"
 }

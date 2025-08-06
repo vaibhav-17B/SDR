@@ -89,7 +89,7 @@ const EmailComposer = () => {
   }, [getCurrentEmailData, handleSendEmail]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 shadow-xl hover:shadow-2xl transition-shadow duration-500 rounded-lg p-6 bg-gradient-to-br from-white to-gray-50">
       {/* Hidden Gmail Auth - handles authentication state */}
       <div className="hidden">
         <GmailAuth onAuthChange={handleAuthChange} />

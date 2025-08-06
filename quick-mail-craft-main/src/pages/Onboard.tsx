@@ -59,23 +59,23 @@ const Onboard = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-gray-50">
       {/* Hero Section */}
-      <div className="relative overflow-hidden">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-16">
+      <div className="relative overflow-hidden bg-gray-900 shadow-inner">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-16 shadow-2xl">
           <div className="text-center">
-            <h1 className="text-4xl md:text-6xl font-bold text-gray-900 mb-6">
+            <h1 className="text-4xl md:text-6xl font-bold text-white mb-6 drop-shadow-2xl shadow-lg hover:drop-shadow-3xl transition-all duration-300">
               Sales Development
-              <span className="block text-gray-600">Reimagined</span>
+              <span className="block text-gray-300 drop-shadow-lg hover:drop-shadow-xl transition-all duration-300">Reimagined</span>
             </h1>
-            <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
+            <p className="text-xl text-gray-300 mb-8 max-w-3xl mx-auto drop-shadow-lg hover:drop-shadow-xl transition-all duration-300 shadow-sm">
               Transform your sales process with AI-powered lead discovery and email composition. 
               Build meaningful connections that drive revenue growth.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <div className="flex flex-col sm:flex-row gap-6 justify-center">
               <Button 
                 size="lg" 
-                className="bg-gray-900 hover:bg-gray-800 text-white"
+                className="bg-white hover:bg-gray-100 text-gray-900 shadow-2xl hover:shadow-3xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-1"
                 onClick={() => navigate('/user-info')}
               >
                 Get Started
@@ -84,7 +84,7 @@ const Onboard = () => {
               <Button 
                 size="lg" 
                 variant="outline"
-                className="border-gray-300 text-gray-900 hover:bg-gray-50"
+                className="border-2 border-white text-white bg-black hover:bg-gray-800 hover:text-white hover:border-white shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-1 ring-2 ring-white/20 hover:ring-white/40"
                 onClick={() => navigate('/studio')}
               >
                 View Demo
@@ -109,17 +109,17 @@ const Onboard = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {features.map((feature, index) => (
-              <Card key={index} className="border-gray-200 hover:shadow-lg transition-shadow">
-                <CardHeader>
+              <Card key={index} className="border-gray-200 shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-2">
+                <CardHeader className="shadow-sm">
                   <div className="flex items-center space-x-3">
-                    <div className="p-2 bg-gray-100 rounded-lg">
+                    <div className="p-2 bg-gray-100 rounded-lg shadow-md hover:shadow-lg transition-all duration-300 transform hover:scale-110">
                       <feature.icon className="h-6 w-6 text-gray-900" />
                     </div>
-                    <CardTitle className="text-gray-900">{feature.title}</CardTitle>
+                    <CardTitle className="text-gray-900 hover:text-gray-700 transition-colors duration-300">{feature.title}</CardTitle>
                   </div>
                 </CardHeader>
-                <CardContent>
-                  <p className="text-gray-600">{feature.description}</p>
+                <CardContent className="shadow-inner">
+                  <p className="text-gray-600 hover:text-gray-800 transition-colors duration-300">{feature.description}</p>
                 </CardContent>
               </Card>
             ))}
@@ -152,7 +152,7 @@ const Onboard = () => {
               <div className="mt-8">
                 <Button 
                   size="lg"
-                  className="bg-gray-900 hover:bg-gray-800 text-white"
+                  className="bg-gray-900 hover:bg-gray-800 text-white shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-1"
                   onClick={() => navigate('/user-info')}
                 >
                   Start Your Journey
@@ -191,7 +191,7 @@ const Onboard = () => {
           </p>
           <Button 
             size="lg"
-            className="bg-white text-gray-900 hover:bg-gray-100"
+            className="bg-white text-gray-900 hover:bg-gray-100 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-1"
             onClick={() => navigate('/user-info')}
           >
             Get Started Today

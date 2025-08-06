@@ -15,7 +15,25 @@ import uuid
 import glob
 import json
 from datetime import datetime, timedelta
-from base_models import UserData, EmailGenerationParams, EmailSendRequest, LeadSearchRequest
+from base_models import (
+    # Authentication models
+    GmailAuthRequest, AuthStatusResponse, UserInfo,
+    # Email models
+    EmailSendRequest, EmailSendResponse, EmailGenerationParams, EmailGenerationResponse,
+    # User management models
+    UserData, UserRegistrationResponse, UserProfileUpdateRequest, UserProfileUpdateResponse,
+    UserDeleteResponse, UserStats, UserStatsResponse,
+    # Lead search models
+    LeadSearchRequest, LeadSearchResponse,
+    # Search history models
+    SearchHistoryItem, SearchHistoryResponse, SearchByIdResponse, SearchDeleteResponse,
+    # Prospects list models
+    ProspectData, ProspectsListItem, ProspectsListResponse, CreateProspectsListRequest,
+    CreateProspectsListResponse, AddProspectsRequest, AddProspectsResponse,
+    ProspectsListByIdResponse, DeleteProspectsListResponse, RemoveProspectResponse,
+    # Common models
+    SessionIDRequest, IDOnlyRequest, SuccessResponse, ErrorResponse, LogoutResponse
+)
 from redis_helper import RedisSessionManager
 from user_manager import UserManager
 from utils import build_auth_html_response,email_helper
@@ -87,11 +105,10 @@ async def root():
     return {"message": "Gmail Email Composer API"}
 
 @app.post("/api/authenticate-gmail")
-async def start_gmail_auth(request: Request):
+async def start_gmail_auth(auth_request: GmailAuthRequest):
     try:
         # Get auth state from request body
-        body = await request.json()
-        frontend_auth_state = body.get('auth_state')
+        frontend_auth_state = auth_request.auth_state
         
         if not frontend_auth_state:
             return JSONResponse(
@@ -596,7 +613,7 @@ async def check_auth_status_by_state(auth_state_id: str):
 
 
 
-@app.post("/api/generate-email")
+@app.post("/api/generate-email", response_model=EmailGenerationResponse)
 async def generate_email(params: EmailGenerationParams):
     """Generate email content based on provided parameters"""
     print(f"PARAMS: {params.tone}\n{params.type}\n{params.painPoints}\n{params.additionalRequirements}")
@@ -705,7 +722,7 @@ async def send_email(
 
     
 
-@app.post("/api/register-user")
+@app.post("/api/register-user", response_model=UserRegistrationResponse)
 async def register_user(data: UserData, request: Request):
     """Register user with profile data and create permanent token file"""
     try:
@@ -787,7 +804,7 @@ async def register_user(data: UserData, request: Request):
         raise HTTPException(status_code=500, detail=f"Failed to register user: {str(e)}")
 
 
-@app.delete("/api/logout")
+@app.delete("/api/logout", response_model=LogoutResponse)
 async def logout(request: Request):
     """Logout and remove stored credentials"""
     try:
@@ -816,7 +833,7 @@ async def logout(request: Request):
         raise HTTPException(status_code=500, detail=f"Failed to logout: {str(e)}")
 
 
-@app.post("/api/fetch_leads")
+@app.post("/api/fetch_leads", response_model=LeadSearchResponse)
 async def fetch_leads_v3(
     request: LeadSearchRequest,
     x_session_id: Optional[str] = Header(None, alias="X-Session-ID"),
@@ -893,7 +910,7 @@ async def fetch_leads_v3(
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 
-@app.get("/api/search-history")
+@app.get("/api/search-history", response_model=SearchHistoryResponse)
 async def get_search_history(
     request: Request,
     limit: int = 10,
@@ -952,7 +969,7 @@ async def get_search_history(
         raise HTTPException(status_code=500, detail=f"Failed to get search history: {str(e)}")
 
 
-@app.get("/api/search-history/{search_id}")
+@app.get("/api/search-history/{search_id}", response_model=SearchByIdResponse)
 async def get_search_by_id(
     search_id: str,
     request: Request,
@@ -1012,7 +1029,7 @@ async def get_search_by_id(
         raise HTTPException(status_code=500, detail=f"Failed to get search: {str(e)}")
 
 
-@app.delete("/api/search-history/{search_id}")
+@app.delete("/api/search-history/{search_id}", response_model=SearchDeleteResponse)
 async def delete_search_history(
     search_id: str,
     request: Request,
@@ -1071,8 +1088,8 @@ async def delete_search_history(
         raise HTTPException(status_code=500, detail=f"Failed to delete search: {str(e)}")
 
 
-@app.post("/api/change-profile")
-async def change_profile(data: UserData, request: Request):
+@app.post("/api/change-profile", response_model=UserProfileUpdateResponse)
+async def change_profile(data: UserProfileUpdateRequest, request: Request):
     """Update user profile information"""
     try:
         # Get session_id from request headers
@@ -1159,7 +1176,7 @@ async def change_profile(data: UserData, request: Request):
         raise HTTPException(status_code=500, detail=f"Failed to update profile: {str(e)}")
 
 
-@app.delete("/api/delete-profile")
+@app.delete("/api/delete-profile", response_model=UserDeleteResponse)
 async def delete_profile(request: Request):
     """Delete user profile (mark as deleted in CSV)"""
     try:
@@ -1222,7 +1239,7 @@ async def delete_profile(request: Request):
         raise HTTPException(status_code=500, detail=f"Failed to delete profile: {str(e)}")
 
 
-@app.get("/api/user-stats")
+@app.get("/api/user-stats", response_model=UserStatsResponse)
 async def get_user_stats(request: Request):
     """Get user statistics from CSV database"""
     try:
@@ -1272,7 +1289,7 @@ async def get_user_stats(request: Request):
 
 # Prospects Lists Endpoints
 
-@app.get("/api/prospects-lists")
+@app.get("/api/prospects-lists", response_model=ProspectsListResponse)
 async def get_prospects_lists(request: Request):
     """Get all prospects lists for the authenticated user"""
     try:
@@ -1322,8 +1339,8 @@ async def get_prospects_lists(request: Request):
         raise HTTPException(status_code=500, detail=f"Failed to get prospects lists: {str(e)}")
 
 
-@app.post("/api/prospects-lists")
-async def create_prospects_list(request: Request):
+@app.post("/api/prospects-lists", response_model=CreateProspectsListResponse)
+async def create_prospects_list(prospects_request: CreateProspectsListRequest, request: Request):
     """Create a new prospects list"""
     try:
         # Get session_id from request headers
@@ -1351,12 +1368,11 @@ async def create_prospects_list(request: Request):
         if not user_email:
             raise HTTPException(status_code=400, detail="User email not found in session data")
         
-        # Get request body
-        body = await request.json()
-        list_name = body.get('list_name', '').strip()
-        description = body.get('description', '').strip()
-        prospects = body.get('prospects', [])
-        tags = body.get('tags', [])
+        # Get request data from Pydantic model
+        list_name = prospects_request.list_name.strip()
+        description = prospects_request.description.strip()
+        prospects = prospects_request.prospects
+        tags = prospects_request.tags or []
         
         if not list_name:
             raise HTTPException(status_code=400, detail="List name is required")
@@ -1394,8 +1410,8 @@ async def create_prospects_list(request: Request):
         raise HTTPException(status_code=500, detail=f"Failed to create prospects list: {str(e)}")
 
 
-@app.post("/api/prospects-lists/{list_id}/add-prospects")
-async def add_prospects_to_list(list_id: str, request: Request):
+@app.post("/api/prospects-lists/{list_id}/add-prospects", response_model=AddProspectsResponse)
+async def add_prospects_to_list(list_id: str, add_prospects_request: AddProspectsRequest, request: Request):
     """Add prospects to an existing list"""
     try:
         # Get session_id from request headers
@@ -1423,9 +1439,8 @@ async def add_prospects_to_list(list_id: str, request: Request):
         if not user_email:
             raise HTTPException(status_code=400, detail="User email not found in session data")
         
-        # Get request body
-        body = await request.json()
-        prospects = body.get('prospects', [])
+        # Get prospects from Pydantic model
+        prospects = add_prospects_request.prospects
         
         if not prospects:
             raise HTTPException(status_code=400, detail="No prospects provided")
@@ -1459,7 +1474,7 @@ async def add_prospects_to_list(list_id: str, request: Request):
         raise HTTPException(status_code=500, detail=f"Failed to add prospects to list: {str(e)}")
 
 
-@app.delete("/api/prospects-lists/{list_id}")
+@app.delete("/api/prospects-lists/{list_id}", response_model=DeleteProspectsListResponse)
 async def delete_prospects_list(list_id: str, request: Request):
     """Delete a prospects list"""
     try:
@@ -1515,7 +1530,7 @@ async def delete_prospects_list(list_id: str, request: Request):
         raise HTTPException(status_code=500, detail=f"Failed to delete prospects list: {str(e)}")
 
 
-@app.get("/api/prospects-lists/{list_id}")
+@app.get("/api/prospects-lists/{list_id}", response_model=ProspectsListByIdResponse)
 async def get_prospects_list_by_id(list_id: str, request: Request):
     """Get a specific prospects list by ID"""
     try:
@@ -1570,7 +1585,7 @@ async def get_prospects_list_by_id(list_id: str, request: Request):
         raise HTTPException(status_code=500, detail=f"Failed to get prospects list: {str(e)}")
 
 
-@app.delete("/api/prospects-lists/{list_id}/prospects/{prospect_index}")
+@app.delete("/api/prospects-lists/{list_id}/prospects/{prospect_index}", response_model=RemoveProspectResponse)
 async def remove_prospect_from_list(list_id: str, prospect_index: int, request: Request):
     """Remove a prospect from a list by index"""
     try:

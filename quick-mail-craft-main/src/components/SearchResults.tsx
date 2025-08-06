@@ -351,7 +351,7 @@ const SearchResults = ({ leads, onLeadClick, getLeadDisplayName, getLeadDisplayE
                 <Button 
                   variant="outline" 
                   size="sm" 
-                  className="bg-gray-100 border-2 border-gray-200 text-gray-800 hover:bg-gray-200 hover:border-gray-300 hover:text-gray-900 rounded-lg font-medium transition-all duration-200 shadow-sm"
+                  className="bg-gray-100 border-2 border-gray-200 text-gray-800 hover:bg-gray-200 hover:border-gray-300 hover:text-gray-900 rounded-lg font-medium shadow-md hover:shadow-xl transition-all duration-300 transform hover:scale-105"
                 >
                   <div className="flex items-center">
                     See Search Params Used
@@ -363,16 +363,31 @@ const SearchResults = ({ leads, onLeadClick, getLeadDisplayName, getLeadDisplayE
           )}
         </div>
 
-        {/* Bulk Actions */}
-        <div className="flex items-center justify-between bg-white/10 rounded-lg p-3">
-          <div className="flex items-center space-x-3">
+        {/* Select All Bar */}
+        <div 
+          onClick={handleSelectAll}
+          className="flex items-center justify-between bg-white/15 hover:bg-white/20 rounded-lg p-4 cursor-pointer shadow-lg hover:shadow-xl transition-all duration-300 border border-white/20"
+        >
+          <div className="flex items-center space-x-4">
             <Checkbox
               checked={selectedLeads.size === leads.length && leads.length > 0}
               onCheckedChange={handleSelectAll}
-              className="border-white data-[state=checked]:bg-white data-[state=checked]:text-gray-900"
+              className="border-white data-[state=checked]:bg-white data-[state=checked]:text-gray-900 w-5 h-5"
             />
-            <span className="text-sm font-medium">
-              {selectedLeads.size === 0 ? 'Select All' : `${selectedLeads.size} selected`}
+            <span className="text-lg font-semibold text-white">
+              {selectedLeads.size === 0 ? 'Select All Leads' : `${selectedLeads.size} of ${leads.length} leads selected`}
+            </span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <CheckSquare className="w-5 h-5 text-white/70" />
+          </div>
+        </div>
+        
+        {/* Bulk Actions */}
+        <div className="flex items-center justify-between bg-white/10 rounded-lg p-3" style={{display: selectedLeads.size > 0 ? 'flex' : 'none'}}>
+          <div className="flex items-center space-x-3">
+            <span className="text-sm font-medium text-white">
+              Quick Actions for Selected Leads:
             </span>
           </div>
           
@@ -421,7 +436,7 @@ const SearchResults = ({ leads, onLeadClick, getLeadDisplayName, getLeadDisplayE
                 variant="outline"
                 size="sm"
                 onClick={() => setSelectedLeads(new Set())}
-                className="bg-transparent text-white border-white hover:bg-white/20"
+                className="bg-transparent text-white border-white hover:bg-white/20 shadow-md hover:shadow-xl transition-all duration-300 transform hover:scale-105"
               >
                 Clear Selection
               </Button>
@@ -463,7 +478,7 @@ const SearchResults = ({ leads, onLeadClick, getLeadDisplayName, getLeadDisplayE
             <div
               key={index}
               onClick={() => onLeadClick(lead)}
-              className="group p-5 border border-gray-100 rounded-xl hover:bg-gradient-to-r hover:from-gray-900 hover:to-gray-800 hover:text-white cursor-pointer transition-all duration-300 hover:shadow-xl bg-white hover:border-gray-700 hover:scale-[1.02]"
+              className="group p-5 border border-gray-100 rounded-xl hover:bg-gradient-to-r hover:from-gray-900 hover:to-gray-800 hover:text-white cursor-pointer transition-all duration-300 shadow-lg hover:shadow-2xl bg-white hover:border-gray-700 transform hover:scale-[1.02] hover:-translate-y-1"
             >
               <div className="flex items-center space-x-4">
                 <div className="flex-shrink-0">

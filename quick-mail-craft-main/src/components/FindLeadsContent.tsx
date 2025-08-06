@@ -10,6 +10,7 @@ import LeadDetailsDialog from '@/components/LeadDetailsDialog';
 import NewListDialog from '@/components/NewListDialog';
 import { API_CONFIG } from '@/config/api';
 import { getSessionId } from '@/utils/session';
+import { Search, List } from 'lucide-react';
 
 // Mapping constants
 const COMPANY_SIZE_MAPPING: Record<string, any> = {
@@ -253,44 +254,81 @@ const FindLeadsContent = () => {
     console.log('📝 Received search params:', searchParams);
     console.log('📋 Received results count:', results?.length || 0);
     
-    // Convert search params back to form data format
-    const convertedFormData: FormData = {
-      jobTitles: Array.isArray(searchParams.job_titles) ? searchParams.job_titles.join(', ') : '',
-      companyNames: Array.isArray(searchParams.company_names) ? searchParams.company_names.join(', ') : '',
-      companyDomains: Array.isArray(searchParams.company_domains) ? searchParams.company_domains.join(', ') : '',
-      departments: Array.isArray(searchParams.departments) ? searchParams.departments.join(', ') : '',
-      companySize: Array.isArray(searchParams.company_size) ? searchParams.company_size : [],
-      companyRevenue: Array.isArray(searchParams.company_revenue) ? searchParams.company_revenue : [],
-      companyIndustry: Array.isArray(searchParams.company_industry) ? searchParams.company_industry : [],
-      companySubIndustry: Array.isArray(searchParams.company_sub_industry) ? searchParams.company_sub_industry : [],
-      seniority: Array.isArray(searchParams.seniority) ? searchParams.seniority : [],
-      technologies: Array.isArray(searchParams.technologies) ? searchParams.technologies.join(', ') : '',
-      locationPreference: searchParams.location_preference || '',
-      countries: Array.isArray(searchParams.countries) ? searchParams.countries : [],
-      states: Array.isArray(searchParams.states) ? searchParams.states : [],
-      cities: Array.isArray(searchParams.cities) ? searchParams.cities : []
-    };
+    try {
+      // Validate input parameters
+      if (!searchParams || typeof searchParams !== 'object') {
+        console.error('❌ Error: Invalid search params received');
+        toast.error('Invalid search parameters');
+        return;
+      }
 
-    console.log('🔄 Converted form data:', {
-      jobTitles: convertedFormData.jobTitles,
-      companyNames: convertedFormData.companyNames,
-      companySize: convertedFormData.companySize,
-      seniority: convertedFormData.seniority,
-      countries: convertedFormData.countries,
-      // ... other non-empty fields
-    });
+      // Ensure results is an array
+      const safeResults: Lead[] = Array.isArray(results) ? results : [];
+      console.log('📊 Using safe results array with', safeResults.length, 'items');
 
-    // Update form data and results
-    console.log('📝 Updating form data state...');
-    setFormData(convertedFormData);
-    
-    console.log('📋 Updating leads state...');
-    setLeads(results);
-    
-    console.log('📊 Updating search params state...');
-    setLastSearchParams(searchParams);
-    
-    console.log('✅ Search history loaded successfully into form and results');
+      // Convert search params back to form data format
+      const convertedFormData: FormData = {
+        jobTitles: Array.isArray(searchParams.job_titles) ? searchParams.job_titles.join(', ') : '',
+        companyNames: Array.isArray(searchParams.company_names) ? searchParams.company_names.join(', ') : '',
+        companyDomains: Array.isArray(searchParams.company_domains) ? searchParams.company_domains.join(', ') : '',
+        departments: Array.isArray(searchParams.departments) ? searchParams.departments.join(', ') : '',
+        companySize: Array.isArray(searchParams.company_size) ? searchParams.company_size : [],
+        companyRevenue: Array.isArray(searchParams.company_revenue) ? searchParams.company_revenue : [],
+        companyIndustry: Array.isArray(searchParams.company_industry) ? searchParams.company_industry : [],
+        companySubIndustry: Array.isArray(searchParams.company_sub_industry) ? searchParams.company_sub_industry : [],
+        seniority: Array.isArray(searchParams.seniority) ? searchParams.seniority : [],
+        technologies: Array.isArray(searchParams.technologies) ? searchParams.technologies.join(', ') : '',
+        locationPreference: searchParams.location_preference || '',
+        countries: Array.isArray(searchParams.countries) ? searchParams.countries : [],
+        states: Array.isArray(searchParams.states) ? searchParams.states : [],
+        cities: Array.isArray(searchParams.cities) ? searchParams.cities : []
+      };
+
+      console.log('🔄 Converted form data:', {
+        jobTitles: convertedFormData.jobTitles,
+        companyNames: convertedFormData.companyNames,
+        companySize: convertedFormData.companySize,
+        seniority: convertedFormData.seniority,
+        countries: convertedFormData.countries,
+        // ... other non-empty fields
+      });
+
+      // Update form data and results
+      console.log('📝 Updating form data state...');
+      setFormData(convertedFormData);
+      
+      console.log('📋 Updating leads state...');
+      setLeads(safeResults);
+      
+      console.log('📊 Updating search params state...');
+      setLastSearchParams(searchParams);
+      
+      console.log('✅ Search history loaded successfully into form and results');
+      
+    } catch (error) {
+      console.error('❌ Error in handleLoadSearch:', error);
+      toast.error('Failed to load search data');
+      
+      // Reset to safe state
+      setFormData({
+        jobTitles: '',
+        companyNames: '',
+        companyDomains: '',
+        departments: '',
+        companySize: [],
+        companyRevenue: [],
+        companyIndustry: [],
+        companySubIndustry: [],
+        seniority: [],
+        technologies: '',
+        locationPreference: '',
+        countries: [],
+        states: [],
+        cities: []
+      });
+      setLeads([]);
+      setLastSearchParams(null);
+    }
   };
 
   const getLeadDisplayName = (lead: Lead) => {
@@ -314,7 +352,7 @@ const FindLeadsContent = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-gray-50">
       {/* Hero Section */}
       <div className="bg-gray-900 text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -333,25 +371,29 @@ const FindLeadsContent = () => {
         </div>
       </div>
 
-      {/* Main Content */}
+     {/* Main Content */}
       <div className="bg-gray-50 p-6">
         <div className="max-w-7xl mx-auto">
           <Tabs defaultValue="find-leads" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-6 bg-white shadow-sm border border-gray-200">
+            <TabsList className="grid w-full grid-cols-2 mb-6 bg-white shadow-xl hover:shadow-2xl transition-shadow duration-300 border border-gray-200">
+              
               <TabsTrigger 
                 value="find-leads" 
-                className="data-[state=active]:bg-gray-900 data-[state=active]:text-white font-semibold text-gray-600 hover:text-gray-900 transition-colors"
+                className="data-[state=active]:bg-gray-900 data-[state=active]:text-white font-semibold text-gray-600 hover:text-gray-900 transition-all duration-300 flex items-center gap-1 shadow-sm hover:shadow-md transform hover:scale-105"
               >
-                🔍 Find Leads
+                <Search className="w-5 h-5" />
+                <span>Find Leads</span>
               </TabsTrigger>
+              
               <TabsTrigger 
                 value="prospects-lists" 
-                className="data-[state=active]:bg-gray-900 data-[state=active]:text-white font-semibold text-gray-600 hover:text-gray-900 transition-colors"
+                className="data-[state=active]:bg-gray-900 data-[state=active]:text-white font-semibold text-gray-600 hover:text-gray-900 transition-all duration-300 flex items-center gap-1 shadow-sm hover:shadow-md transform hover:scale-105"
               >
-                📋 My Prospects Lists
+                <List className="w-5 h-5" />
+                <span>My Prospects Lists</span>
               </TabsTrigger>
             </TabsList>
-            
+                  
             <TabsContent value="find-leads" className="space-y-6 mt-0">
               <SearchFormWithIcons
                 formData={formData}
