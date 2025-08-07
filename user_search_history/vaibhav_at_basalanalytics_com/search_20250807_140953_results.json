@@ -1,21 +1,8 @@
 {
-  "search_id": "search_20250806_220026",
+  "search_id": "search_20250807_140953",
   "search_params": {
-    "job_titles": [
-      "CEO"
-    ],
     "company_names": [
       "GOOGLE"
-    ],
-    "company_domains": [
-      "google.com"
-    ],
-    "departments": [
-      "Sales"
-    ],
-    "company_size": [
-      "1-10",
-      "51-200"
     ],
     "company_revenue": [
       "0-1M"
@@ -23,21 +10,14 @@
     "company_industry": [
       "Technology"
     ],
-    "company_sub_industry": [
-      "SaaS"
-    ],
-    "technologies": [
-      "Python",
-      "AWS"
+    "seniority": [
+      "Entry"
     ],
     "countries": [
       "United States"
     ],
     "states": [
       "California"
-    ],
-    "cities": [
-      "San Francisco"
     ]
   },
   "results": [
@@ -364,5 +344,5 @@
     }
   ],
   "total_count": 3,
-  "timestamp": "2025-08-06T22:00:26.446814"
+  "timestamp": "2025-08-07T14:09:53.731734"
 }

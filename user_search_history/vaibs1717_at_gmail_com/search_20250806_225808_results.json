@@ -1,12 +1,11 @@
 {
-  "search_id": "search_20250806_221842",
+  "search_id": "search_20250806_225808",
   "search_params": {
-    "company_names": [
-      "GOOGLE"
+    "countries": [
+      "United States"
     ],
-    "technologies": [
-      "Python",
-      "AWS"
+    "states": [
+      "California"
     ]
   },
   "results": [
@@ -333,5 +332,5 @@
     }
   ],
   "total_count": 3,
-  "timestamp": "2025-08-06T22:18:42.937596"
+  "timestamp": "2025-08-06T22:58:08.052185"
 }

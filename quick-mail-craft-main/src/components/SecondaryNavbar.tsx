@@ -66,12 +66,12 @@ const SecondaryNavbar = ({
         <div className="py-6 px-4 shadow-lg hover:shadow-xl transition-shadow duration-300 rounded-lg">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h3 className="text-lg font-semibold text-gray-900">Email Campaign Sections</h3>
-              <p className="text-sm text-gray-600 mt-1">Organize your emails into different campaigns and sections</p>
+              <h3 className="text-lg font-semibold text-gray-900">Email Campaign Templates</h3>
+              <p className="text-sm text-gray-600 mt-1">Choose from predefined email templates or create custom sections</p>
             </div>
             <div className="text-sm text-gray-600 bg-white px-4 py-2 rounded-lg border border-gray-100 shadow-md hover:shadow-lg transition-shadow duration-200">
               Currently editing: <span className="font-medium text-gray-900">
-                {emailSections.find(s => s.id === activeSection)?.name || 'Main Email'}
+                {(emailSections.find(s => s.id === activeSection)?.name || 'initial_email').replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
               </span>
             </div>
           </div>
@@ -82,8 +82,8 @@ const SecondaryNavbar = ({
                 key={section.id}
                 className={`relative flex items-center gap-2 px-4 py-2 rounded-lg border transition-all duration-200 ${
                   activeSection === section.id
-                    ? 'bg-gray-900 text-white border-gray-800 shadow-sm'
-                    : 'bg-white text-gray-700 border-gray-100 hover:border-gray-200 hover:shadow-sm'
+                    ? 'bg-gray-900 text-white border-gray-800 shadow-lg hover:shadow-xl'
+                    : 'bg-white text-gray-700 border-gray-100 shadow-md hover:shadow-lg hover:border-gray-200 transform hover:scale-105'
                 }`}
               >
                 {editingName === section.id ? (
@@ -120,26 +120,28 @@ const SecondaryNavbar = ({
                         onClick={() => onSectionChange(section.id)}
                         className="font-medium text-left"
                       >
-                        {section.name}
+                        {section.name.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
                       </button>
-                      {index === 0 && (
-                        <span className="text-xs bg-gray-100 text-gray-800 px-2 py-1 rounded-full">
-                          Main
+                      {parseInt(section.id) <= 7 && (
+                        <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                          Template
                         </span>
                       )}
                     </div>
                     
                     <div className="flex items-center gap-1">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => handleEditStart(section)}
-                        className="h-6 w-6 p-0 hover:bg-white/20 shadow-md hover:shadow-lg transition-all duration-300 transform hover:scale-110"
-                        title="Edit section name"
-                      >
-                        <Edit3 className="w-3 h-3" />
-                      </Button>
-                      {emailSections.length > 1 && (
+                      {parseInt(section.id) > 7 && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleEditStart(section)}
+                          className="h-6 w-6 p-0 hover:bg-white/20 shadow-md hover:shadow-lg transition-all duration-300 transform hover:scale-110"
+                          title="Edit section name"
+                        >
+                          <Edit3 className="w-3 h-3" />
+                        </Button>
+                      )}
+                      {emailSections.length > 1 && parseInt(section.id) > 7 && (
                         <Button
                           size="sm"
                           variant="ghost"

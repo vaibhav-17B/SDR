@@ -1,26 +1,17 @@
 {
-  "search_id": "search_20250806_200423",
+  "search_id": "search_20250807_111932",
   "search_params": {
-    "job_titles": [
-      "CEO"
-    ],
-    "company_names": [
-      "GOOGLE"
-    ],
-    "company_size": [
-      "1-10"
-    ],
-    "company_industry": [
-      "Technology"
+    "company_sub_industry": [
+      "SaaS"
     ],
     "seniority": [
       "Entry"
     ],
     "countries": [
-      "United States",
-      "Canada",
-      "United Kingdom",
-      "India"
+      "United States"
+    ],
+    "states": [
+      "California"
     ]
   },
   "results": [
@@ -347,5 +338,5 @@
     }
   ],
   "total_count": 3,
-  "timestamp": "2025-08-06T20:04:23.186680"
+  "timestamp": "2025-08-07T11:19:32.295148"
 }

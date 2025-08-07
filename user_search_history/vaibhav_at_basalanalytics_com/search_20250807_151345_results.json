@@ -1,14 +1,11 @@
 {
-  "search_id": "search_20250804_105709",
+  "search_id": "search_20250807_151345",
   "search_params": {
-    "company_names": [
-      "GOOGLE"
+    "company_revenue": [
+      "0-1M"
     ],
-    "countries": [
-      "United States"
-    ],
-    "states": [
-      "California"
+    "seniority": [
+      "Entry"
     ]
   },
   "results": [
@@ -335,5 +332,5 @@
     }
   ],
   "total_count": 3,
-  "timestamp": "2025-08-04T10:57:09.896089"
+  "timestamp": "2025-08-07T15:13:45.253270"
 }

@@ -1,14 +1,8 @@
 {
-  "search_id": "search_20250806_115831",
-  "search_params": {
-    "company_industry": [
-      "Technology"
-    ],
-    "seniority": [
-      "Entry"
-    ]
-  },
-  "results": [
+  "list_id": "list_20250806_225830",
+  "list_name": "L!",
+  "description": "Note",
+  "prospects": [
     {
       "personal_information": {
         "full_name": "Tural Badirkhanli",
@@ -332,5 +326,6 @@
     }
   ],
   "total_count": 3,
-  "timestamp": "2025-08-06T11:58:31.809229"
+  "created_timestamp": "2025-08-06T22:58:30.203706",
+  "tags": []
 }

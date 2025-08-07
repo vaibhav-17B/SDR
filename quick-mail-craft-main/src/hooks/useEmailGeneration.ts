@@ -5,10 +5,21 @@ import { API_CONFIG } from '@/config/api';
 import { getSessionId } from '@/utils/session';
 
 interface EmailGenerationParams {
+  mail_types: string[];
+  description: string;
   tone: string;
-  type: string;
-  painPoints: string;
-  additionalRequirements: string;
+  additional_requirements: string;
+}
+
+interface EmailContent {
+  subject: string;
+  body: string;
+}
+
+interface MultipleEmailGenerationResponse {
+  success: boolean;
+  message: string;
+  generated_emails: { [key: string]: EmailContent };
 }
 
 export const useEmailGeneration = (sessionId: string | null, activeSection: string, setEmailSections: any) => {
@@ -16,37 +27,46 @@ export const useEmailGeneration = (sessionId: string | null, activeSection: stri
   const API_BASE_URL = `${API_CONFIG.BASE_URL}`;
 
   const generateEmailContent = useCallback(async (params: EmailGenerationParams, test: boolean = false) => {
-    console.log('######DEBUG##### Starting email generation with params:', params);
+    console.log('######DEBUG##### Starting multiple email generation with params:', params);
     setIsGenerating(true);
     
     const loadingToastId = toast.loading("Generating email content...", {
-      description: "This may take a few seconds",
+      description: `Generating ${params.mail_types.length} email(s). This may take a few seconds...`,
     });
     
     try {
       if (test) {
-        const mockGeneratedContent = {
-          subject: `${params.type === 'follow-up' ? 'Follow-up: ' : ''}Test Email - ${params.tone} Tone`,
-          body: `TEST MODE: Mock email content based on: ${params.type}, ${params.tone}, ${params.painPoints}`
-        };
+        // Generate mock content for all selected mail types
+        const mockGeneratedEmails: { [key: string]: EmailContent } = {};
+        
+        params.mail_types.forEach(mailType => {
+          mockGeneratedEmails[mailType] = {
+            subject: `Test ${mailType.replace('_', ' ')} - ${params.tone} Tone`,
+            body: `TEST MODE: Mock ${mailType} email content\nTone: ${params.tone}\nDescription: ${params.description}\nAdditional Requirements: ${params.additional_requirements}`
+          };
+        });
 
-        console.log('######DEBUG##### Mock email generated:', mockGeneratedContent);
-        setEmailSections((prev: any) => prev.map((section: any) => 
-          section.id === activeSection 
-            ? {
-                ...section,
-                emailData: {
-                  ...section.emailData,
-                  subject: mockGeneratedContent.subject,
-                  body: mockGeneratedContent.body
-                }
+        console.log('######DEBUG##### Mock emails generated:', mockGeneratedEmails);
+        
+        // Update all email sections with their corresponding generated content
+        setEmailSections((prev: any) => prev.map((section: any) => {
+          const generatedEmail = mockGeneratedEmails[section.name];
+          if (generatedEmail) {
+            return {
+              ...section,
+              emailData: {
+                ...section.emailData,
+                subject: generatedEmail.subject,
+                body: generatedEmail.body
               }
-            : section
-        ));
+            };
+          }
+          return section;
+        }));
 
         toast.dismiss(loadingToastId);
-        toast.success("Test email generated successfully!", {
-          description: "No API call was made - this is a mock email",
+        toast.success(`Test emails generated successfully!`, {
+          description: `Generated ${params.mail_types.length} mock email(s)`,
           duration: 4000,
         });
       } else {
@@ -62,7 +82,7 @@ export const useEmailGeneration = (sessionId: string | null, activeSection: stri
           payload: params
         };
         
-        console.log('######DEBUG##### API Request - Generate Email:', requestData);
+        console.log('######DEBUG##### API Request - Generate Multiple Emails:', requestData);
 
         const response = await fetch(`${API_BASE_URL}/api/generate-email`, {
           method: 'POST',
@@ -70,36 +90,43 @@ export const useEmailGeneration = (sessionId: string | null, activeSection: stri
           body: JSON.stringify(requestData.payload),
         });
 
-        console.log('######DEBUG##### API Response - Generate Email Status:', response.status);
+        console.log('######DEBUG##### API Response - Generate Emails Status:', response.status);
 
         if (!response.ok) {
-          throw new Error('Failed to generate email');
+          throw new Error('Failed to generate emails');
         }
 
-        const generatedContent = await response.json();
-        console.log('######DEBUG##### API Response - Generate Email Data:', generatedContent);
+        const result: MultipleEmailGenerationResponse = await response.json();
+        console.log('######DEBUG##### API Response - Generate Emails Data:', result);
         
-        setEmailSections((prev: any) => prev.map((section: any) => 
-          section.id === activeSection 
-            ? {
+        if (result.success && result.generated_emails) {
+          // Update all email sections with their corresponding generated content
+          setEmailSections((prev: any) => prev.map((section: any) => {
+            const generatedEmail = result.generated_emails[section.name];
+            if (generatedEmail) {
+              return {
                 ...section,
                 emailData: {
                   ...section.emailData,
-                  subject: generatedContent.subject,
-                  body: generatedContent.body
+                  subject: generatedEmail.subject,
+                  body: generatedEmail.body
                 }
-              }
-            : section
-        ));
+              };
+            }
+            return section;
+          }));
 
-        toast.dismiss(loadingToastId);
-        toast.success("Email content generated successfully!", {
-          description: "Your email is ready to review and send",
-          duration: 4000,
-        });
+          toast.dismiss(loadingToastId);
+          toast.success("Email content generated successfully!", {
+            description: `Generated ${Object.keys(result.generated_emails).length} email(s). Check each section to review content.`,
+            duration: 5000,
+          });
+        } else {
+          throw new Error(result.message || 'Failed to generate emails');
+        }
       }
     } catch (error) {
-      console.log('######DEBUG##### API Error - Generate Email:', error);
+      console.log('######DEBUG##### API Error - Generate Emails:', error);
       toast.dismiss(loadingToastId);
       toast.error("Failed to generate email content. Please try again.", {
         description: "There was an issue with the AI service",
@@ -108,7 +135,7 @@ export const useEmailGeneration = (sessionId: string | null, activeSection: stri
     } finally {
       setIsGenerating(false);
     }
-  }, [API_BASE_URL, sessionId, activeSection, setEmailSections]);
+  }, [API_BASE_URL, sessionId, setEmailSections]);
 
   return {
     isGenerating,

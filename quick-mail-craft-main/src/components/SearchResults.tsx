@@ -519,7 +519,7 @@ const SearchResults = ({ leads, onLeadClick, getLeadDisplayName, getLeadDisplayE
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity bg-white/20 hover:bg-white/30 border border-white/20"
+                            className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 data-[state=open]:opacity-100 transition-opacity bg-white/20 hover:bg-white/30 border border-white/20"
                           >
                             <MoreVertical className="w-4 h-4 text-white" />
                           </Button>

@@ -82,6 +82,7 @@ const FindLeadsContent = () => {
   const [lastSearchParams, setLastSearchParams] = useState<any>(null);
   const [prospectsListKey, setProspectsListKey] = useState<number>(0);
   const [isNewListDialogOpen, setIsNewListDialogOpen] = useState(false);
+  const [refreshSearchHistory, setRefreshSearchHistory] = useState<(() => void) | null>(null);
 
   const handleInputChange = (field: string, value: string | string[]) => {
     setFormData(prev => {
@@ -211,10 +212,20 @@ const FindLeadsContent = () => {
         toast.success(`Found ${data.leads.length} lead(s)`, {
           description: 'Click on any lead to view details'
         });
+        
+        // Refresh search history to show the latest search
+        if (refreshSearchHistory) {
+          refreshSearchHistory();
+        }
       } else {
         setLeads([]);
         toast.dismiss(searchingToastId);
         toast.info('No leads found for the given criteria');
+        
+        // Refresh search history even if no leads found (search was still saved)
+        if (refreshSearchHistory) {
+          refreshSearchHistory();
+        }
       }
     } catch (error) {
       console.error('Error searching leads:', error);
@@ -247,6 +258,10 @@ const FindLeadsContent = () => {
 
   const handleNewListSuccess = () => {
     refreshProspectsList();
+  };
+
+  const handleRefreshSearchHistory = (refreshFn: () => void) => {
+    setRefreshSearchHistory(() => refreshFn);
   };
 
   const handleLoadSearch = (searchParams: any, results: Lead[]) => {
@@ -405,7 +420,10 @@ const FindLeadsContent = () => {
                 onRemoveFilter={handleRemoveFilter}
               />
               
-              <SearchHistory onLoadSearch={handleLoadSearch} />
+              <SearchHistory 
+                onLoadSearch={handleLoadSearch} 
+                onRefreshRef={handleRefreshSearchHistory}
+              />
 
               <SearchResults
                 leads={leads}

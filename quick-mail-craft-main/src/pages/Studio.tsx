@@ -2,13 +2,17 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { User, Mail, Briefcase, Building, Sparkles, Target, BarChart3 } from 'lucide-react';
-import EmailComposer from '@/components/EmailComposer';
+import EmailComposePanel from '@/components/EmailComposePanel';
+import EmailGenerationDialog from '@/components/EmailGenerationDialog';
 import SecondaryNavbar from '@/components/SecondaryNavbar';
 import UserProfileSidebar from '@/components/UserProfileSidebar';
 import { checkAuthStatus, SessionData, clearSession } from '@/utils/session';
 import { API_CONFIG } from '@/config/api';
-import { useEmailSections } from '@/hooks/useEmailSections';
+import { useEmailSections, EmailData } from '@/hooks/useEmailSections';
+import { useEmailGeneration } from '@/hooks/useEmailGeneration';
+import { useEmailSending } from '@/hooks/useEmailSending';
 import { useNavigate } from 'react-router-dom';
+import { toast } from '@/components/ui/sonner';
 
 interface UserData {
   full_name?: string;
@@ -30,14 +34,33 @@ const Studio = ({ onAuthChange }: StudioProps) => {
 
   const {
     emailSections,
+    setEmailSections,
     activeSection,
     editingName,
     setEditingName,
     addNewSection,
     updateSectionName,
     deleteSection,
-    setActiveSection
+    setActiveSection,
+    getCurrentEmailData,
+    handleInputChange,
+    resetCurrentSection
   } = useEmailSections();
+
+  // Email generation and sending hooks
+  const { isGenerating, generateEmailContent } = useEmailGeneration(
+    sessionData?.sessionId || null,
+    activeSection,
+    setEmailSections
+  );
+
+  const { isSending, handleSendEmail } = useEmailSending(
+    sessionData?.sessionId || null,
+    resetCurrentSection
+  );
+
+  // Dialog state for email generation
+  const [isGenerationDialogOpen, setIsGenerationDialogOpen] = useState(false);
 
   useEffect(() => {
     fetchUserData();
@@ -165,6 +188,28 @@ const Studio = ({ onAuthChange }: StudioProps) => {
       // Navigate to user info page
       navigate('/user-info');
     }
+  };
+
+  // Email generation handlers
+  const handleGenerateEmail = async (params: any, test: boolean = false) => {
+    await generateEmailContent(params, test);
+    setIsGenerationDialogOpen(false);
+  };
+
+  const handleSendEmailClick = async () => {
+    const emailData = getCurrentEmailData();
+    await handleSendEmail(emailData);
+  };
+
+  const handleOpenGenerationDialog = () => {
+    if (!sessionData?.isAuthenticated) {
+      toast.error("Please authenticate first", {
+        description: "You need to be logged in to generate emails",
+        duration: 4000,
+      });
+      return;
+    }
+    setIsGenerationDialogOpen(true);
   };
 
   if (isLoading) {
@@ -304,13 +349,29 @@ const Studio = ({ onAuthChange }: StudioProps) => {
               />
             </div>
             
-            {/* Email Composer */}
+            {/* Email Compose Panel */}
             <div className="p-8">
-              <EmailComposer />
+              <EmailComposePanel
+                emailSections={emailSections}
+                activeSection={activeSection}
+                onEmailDataChange={handleInputChange}
+                onSendEmail={handleSendEmailClick}
+                isSending={isSending}
+                onGenerateEmail={handleOpenGenerationDialog}
+              />
             </div>
           </div>
         </div>
       </div>
+      
+      {/* Email Generation Dialog */}
+      <EmailGenerationDialog
+        isOpen={isGenerationDialogOpen}
+        onClose={() => setIsGenerationDialogOpen(false)}
+        onGenerate={handleGenerateEmail}
+        isGenerating={isGenerating}
+        emailSections={emailSections}
+      />
     </div>
   );
 };

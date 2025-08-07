@@ -25,9 +25,10 @@ interface SearchHistoryItem {
 
 interface SearchHistoryProps {
   onLoadSearch?: (searchParams: Record<string, any>, results: Lead[]) => void;
+  onRefreshRef?: (refreshFn: () => void) => void;
 }
 
-const SearchHistory: React.FC<SearchHistoryProps> = ({ onLoadSearch }) => {
+const SearchHistory: React.FC<SearchHistoryProps> = ({ onLoadSearch, onRefreshRef }) => {
   const [searchHistory, setSearchHistory] = useState<SearchHistoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [expandedSearch, setExpandedSearch] = useState<string | null>(null);
@@ -35,9 +36,17 @@ const SearchHistory: React.FC<SearchHistoryProps> = ({ onLoadSearch }) => {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [searchToDelete, setSearchToDelete] = useState<string | null>(null);
 
+  const limit = 10; // Limit for search history items
   useEffect(() => {
     fetchSearchHistory();
   }, []);
+
+  useEffect(() => {
+    // Provide refresh function to parent component
+    if (onRefreshRef) {
+      onRefreshRef(fetchSearchHistory);
+    }
+  }, [onRefreshRef]);
 
   const fetchSearchHistory = async () => {
     console.log('\n🔍 FRONTEND API CALL: GET_SEARCH_HISTORY');
@@ -57,7 +66,7 @@ const SearchHistory: React.FC<SearchHistoryProps> = ({ onLoadSearch }) => {
         return;
       }
 
-      const apiUrl = `${API_CONFIG.BASE_URL}/api/search-history?limit=5`;
+      const apiUrl = `${API_CONFIG.BASE_URL}/api/search-history?limit=${limit}`;
       console.log('🌐 Making request to:', apiUrl);
 
       const response = await fetch(apiUrl, {

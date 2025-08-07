@@ -80,16 +80,27 @@ class EmailSendResponse(BaseModel):
 
 class EmailGenerationParams(BaseModel):
     """Request model for email generation"""
-    tone: str
-    type: str
-    painPoints: str
-    additionalRequirements: str
+    mail_types: List[str]  # List of all mail types
+    description: str       # Description as string
+    tone: str             # Tone as string
+    additional_requirements: str  # Additional requirements as string
+
+class EmailContent(BaseModel):
+    """Individual email content model"""
+    subject: str
+    body: str
 
 class EmailGenerationResponse(BaseModel):
-    """Response model for email generation"""
+    """Response model for single email generation"""
     subject: str
     body: str
     success: bool
+
+class MultipleEmailGenerationResponse(BaseModel):
+    """Response model for multiple email generation"""
+    success: bool
+    message: str
+    generated_emails: Dict[str, EmailContent]  # mail_type -> EmailContent
 
 # ============ USER MANAGEMENT MODELS ============
 

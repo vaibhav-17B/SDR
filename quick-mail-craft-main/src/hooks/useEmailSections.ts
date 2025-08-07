@@ -33,7 +33,103 @@ export const useEmailSections = () => {
   const [emailSections, setEmailSections] = useState<EmailSection[]>([
     {
       id: '1',
-      name: 'Main Email',
+      name: 'initial_email',
+      emailData: {
+        to: '',
+        subject: '',
+        body: '',
+        cc: '',
+        bcc: '',
+        intervalType: 'daily',
+        selectedDays: [],
+        time: '09:00',
+        timezone: 'UTC',
+        includeScheduling: false
+      }
+    },
+    {
+      id: '2',
+      name: 'follow_up_1',
+      emailData: {
+        to: '',
+        subject: '',
+        body: '',
+        cc: '',
+        bcc: '',
+        intervalType: 'daily',
+        selectedDays: [],
+        time: '09:00',
+        timezone: 'UTC',
+        includeScheduling: false
+      }
+    },
+    {
+      id: '3',
+      name: 'follow_up_2',
+      emailData: {
+        to: '',
+        subject: '',
+        body: '',
+        cc: '',
+        bcc: '',
+        intervalType: 'daily',
+        selectedDays: [],
+        time: '09:00',
+        timezone: 'UTC',
+        includeScheduling: false
+      }
+    },
+    {
+      id: '4',
+      name: 'follow_up_3',
+      emailData: {
+        to: '',
+        subject: '',
+        body: '',
+        cc: '',
+        bcc: '',
+        intervalType: 'daily',
+        selectedDays: [],
+        time: '09:00',
+        timezone: 'UTC',
+        includeScheduling: false
+      }
+    },
+    {
+      id: '5',
+      name: 'reply_interested',
+      emailData: {
+        to: '',
+        subject: '',
+        body: '',
+        cc: '',
+        bcc: '',
+        intervalType: 'daily',
+        selectedDays: [],
+        time: '09:00',
+        timezone: 'UTC',
+        includeScheduling: false
+      }
+    },
+    {
+      id: '6',
+      name: 'reply_not_interested',
+      emailData: {
+        to: '',
+        subject: '',
+        body: '',
+        cc: '',
+        bcc: '',
+        intervalType: 'daily',
+        selectedDays: [],
+        time: '09:00',
+        timezone: 'UTC',
+        includeScheduling: false
+      }
+    },
+    {
+      id: '7',
+      name: 'reply_meeting_requested',
       emailData: {
         to: '',
         subject: '',
@@ -52,12 +148,15 @@ export const useEmailSections = () => {
   const [editingName, setEditingName] = useState<string | null>(null);
 
   const addNewSection = useCallback(() => {
-    // Count existing follow-up sections (excluding the main email)
-    const followUpCount = emailSections.filter((section, index) => 
-      index > 0 || section.name.toLowerCase().includes('follow up')
-    ).length;
+    // Count existing follow-up sections (only follow_up_1, follow_up_2, follow_up_3, etc.)
+    const followUpSections = emailSections.filter(section => 
+      section.name.match(/^follow_up_\d+$/)
+    );
     
-    const newName = getFollowUpName(followUpCount);
+    // We start with follow_up_1, follow_up_2, follow_up_3 (3 sections)
+    // New sections should start from follow_up_4
+    const nextFollowUpNumber = Math.max(3, followUpSections.length) + 1;
+    const newName = `follow_up_${nextFollowUpNumber}`;
 
     const newSection: EmailSection = {
       id: Date.now().toString(),

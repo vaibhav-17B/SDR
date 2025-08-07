@@ -1,0 +1,94 @@
+{
+  "list_id": "list_20250807_151420",
+  "list_name": "L3",
+  "description": "Nothing!",
+  "prospects": [
+    {
+      "personal_information": {
+        "full_name": "kan kotecha",
+        "first_name": "kan",
+        "last_name": "kotecha",
+        "linkedin_url": "https://www.linkedin.com/in/kan-kotecha-9895b6b",
+        "professional_headline": "CTO, CAIS",
+        "primary_professional_email": "kan.kotecha@caisgroup.com",
+        "picture_url": "https://media.licdn.com/dms/image/v2/D4D03AQGZdcP862DYVQ/profile-displayphoto-shrink_200_200/profile-displayphoto-shrink_200_200/0/1666742169100?e=2147483647&v=beta&t=G9Qwspu2bdfjrhmARPmKPibbsitc7MTwQHzySKdp57c",
+        "location": {
+          "full_location": "New York City Metropolitan Area",
+          "country": "United States",
+          "regions": [
+            "Americas",
+            "Northern America",
+            "AMER"
+          ]
+        }
+      },
+      "contact_information": {
+        "primary_email": "kan.kotecha@caisgroup.com",
+        "matched_emails": [
+          "kan.kotecha@caisgroup.com",
+          "kkotecha@caisgroup.com",
+          "kotecha@caisgroup.com"
+        ]
+      },
+      "current_position": {
+        "title": "CTO",
+        "department": "C-Suite",
+        "management_level": "C-Level",
+        "is_decision_maker": 1,
+        "total_experience_months": 395,
+        "total_experience_years": 32,
+        "total_experience_remaining_months": 11
+      },
+      "work_experience": [
+        {
+          "position_title": "CTO",
+          "company_name": "CAIS",
+          "company_industry": "Financial Services",
+          "company_size": "201-500 employees",
+          "location": "New York, United States",
+          "duration": "July 2024 - None",
+          "duration_months": 11,
+          "department": "C-Suite",
+          "management_level": "C-Level",
+          "is_current": true
+        },
+        {
+          "position_title": "Chief Technology Officer",
+          "company_name": "Gale Healthcare",
+          "company_industry": "Staffing and Recruiting",
+          "company_size": "10,001+ employees",
+          "location": "United States",
+          "duration": "July 2022 - September 2024",
+          "duration_months": 26,
+          "department": "C-Suite",
+          "management_level": "C-Level",
+          "is_current": false
+        },
+        {
+          "position_title": "Vp",
+          "company_name": "Google",
+          "company_industry": "Software Development",
+          "company_size": "10,001+ employees",
+          "location": "Mountain View California",
+          "duration": "January 2015 - July 2022",
+          "duration_months": 90,
+          "is_current": false
+        }
+      ],
+      "skills_and_expertise": {
+        "inferred_skills": [
+          "wealth management",
+          "director",
+          "technology",
+          "engineering",
+          "management"
+        ]
+      },
+      "profile_index": 2
+    }
+  ],
+  "total_count": 1,
+  "created_timestamp": "2025-08-07T15:14:20.418698",
+  "tags": [],
+  "last_updated": "2025-08-07T15:14:31.054480"
+}

@@ -10,7 +10,12 @@ import {
   BarChart3, 
   Shield,
   ArrowRight,
-  CheckCircle
+  CheckCircle,
+  Github,
+  Linkedin,
+  Twitter,
+  Globe,
+  Heart
 } from 'lucide-react';
 
 const Onboard = () => {
@@ -197,6 +202,68 @@ const Onboard = () => {
             Get Started Today
             <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div className="py-8 bg-gray-800">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
+            {/* Company Info */}
+            <div className="flex items-center space-x-4">
+              <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
+                <span className="text-gray-900 font-bold text-sm">SDR</span>
+              </div>
+              <span className="text-white font-semibold">Sales Development Platform</span>
+            </div>
+
+            {/* Social Links */}
+            <div className="flex items-center space-x-6">
+              <a
+                href="https://www.linkedin.com/company/basal-analytics"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-gray-300 hover:text-blue-400 transition-colors duration-200"
+                aria-label="LinkedIn"
+              >
+                <Linkedin className="w-5 h-5" />
+              </a>
+              <a
+                href="https://twitter.com/basalanalytics"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-gray-300 hover:text-blue-300 transition-colors duration-200"
+                aria-label="Twitter"
+              >
+                <Twitter className="w-5 h-5" />
+              </a>
+              <a
+                href="https://github.com/basalanalytics"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-gray-300 hover:text-white transition-colors duration-200"
+                aria-label="GitHub"
+              >
+                <Github className="w-5 h-5" />
+              </a>
+              <a
+                href="https://basalanalytics.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-gray-300 hover:text-green-400 transition-colors duration-200"
+                aria-label="Website"
+              >
+                <Globe className="w-5 h-5" />
+              </a>
+            </div>
+
+            {/* Copyright */}
+            <div className="flex items-center space-x-1 text-sm text-gray-300">
+              <span>© {new Date().getFullYear()} Made with</span>
+              <Heart className="w-4 h-4 text-red-400 fill-current" />
+              <span>by Basal Analytics</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>

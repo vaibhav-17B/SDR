@@ -19,7 +19,8 @@ from base_models import (
     # Authentication models
     GmailAuthRequest, AuthStatusResponse, UserInfo,
     # Email models
-    EmailSendRequest, EmailSendResponse, EmailGenerationParams, EmailGenerationResponse,
+    EmailSendRequest, EmailSendResponse, EmailGenerationParams, EmailGenerationResponse, 
+    MultipleEmailGenerationResponse, EmailContent,
     # User management models
     UserData, UserRegistrationResponse, UserProfileUpdateRequest, UserProfileUpdateResponse,
     UserDeleteResponse, UserStats, UserStatsResponse,
@@ -42,6 +43,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from csv_database import CSVUserDatabase
 from search_history_manager import SearchHistoryManager
 from prospects_list_manager import ProspectsListManager
+from studio import generate_multiple_emails
 
 
 app = FastAPI()
@@ -58,7 +60,7 @@ scheduler.start()
 
 ALLOWED_ORIGINS = [
     "https://preview--quick-mail-craft.lovable.app",
-    "https://bd635ea278ef.ngrok-free.app",  
+    "https://8fee1d837bd6.ngrok-free.app",  
     "http://localhost:8080",                          
 ]
 
@@ -96,7 +98,7 @@ TOKENS_FOLDER = 'tokens'
 os.makedirs(TOKENS_FOLDER, exist_ok=True)
 
 # Add environment variable or configuration
-REDIRECT_BASE_URL = os.getenv("REDIRECT_BASE_URL", "https://bd635ea278ef.ngrok-free.app")
+REDIRECT_BASE_URL = os.getenv("REDIRECT_BASE_URL", "https://8fee1d837bd6.ngrok-free.app")
 print(f"REDIRECT_BASE_URL: {REDIRECT_BASE_URL}\n")
 
 
@@ -613,59 +615,37 @@ async def check_auth_status_by_state(auth_state_id: str):
 
 
 
-@app.post("/api/generate-email", response_model=EmailGenerationResponse)
-async def generate_email(params: EmailGenerationParams):
-    """Generate email content based on provided parameters"""
-    print(f"PARAMS: {params.tone}\n{params.type}\n{params.painPoints}\n{params.additionalRequirements}")
+@app.post("/api/generate-email", response_model=MultipleEmailGenerationResponse)
+async def generate_email(request: EmailGenerationParams):
+    """Generate multiple emails based on provided mail types and parameters"""
+    print(f"PARAMS: {request.tone}\n{request.mail_types}\n{request.description}\n{request.additional_requirements}")
     try:
-        # Determine email type content
-        type_content = {
-            'first-time': 'I hope this email finds you well. I\'m reaching out to discuss...',
-            'follow-up': 'I wanted to follow up on our previous conversation regarding...',
-            'thank-you': 'I wanted to express my sincere gratitude for...',
-            'inquiry': 'I am writing to inquire about...'
-        }
+        mail_types = request.mail_types
+        tone = request.tone
+        description = request.description
+        additional_requirements = request.additional_requirements
         
-        # Determine tone-based closing
-        tone_closing = {
-            'formal': 'Respectfully yours,',
-            'casual': 'Best,',
-            'professional': 'Best regards,',
-            'friendly': 'Warm regards,'
-        }
+        print(f"[DEBUG] Starting email generation for mail types: {mail_types}")
         
-        # Generate subject
-        subject_prefix = {
-            'follow-up': 'Follow-up: ',
-            'thank-you': 'Thank you - ',
-            'inquiry': 'Inquiry: ',
-            'first-time': ''
-        }
+        # Generate multiple emails using studio.py
+        generated_emails = await generate_multiple_emails(
+            mail_types=mail_types,
+            tone=tone,
+            description=description,
+            additional_requirements=additional_requirements
+        )
         
-        subject = f"{subject_prefix.get(params.type, '')}{params.painPoints[:50]}..."
+        print(f"[DEBUG] Successfully generated {len(generated_emails)} emails")
         
-        # Generate body
-        body = f"""Dear [Recipient Name],
-
-{type_content.get(params.type, 'I hope this email finds you well.')}
-
-I wanted to address the following concerns: {params.painPoints}
-
-{params.additionalRequirements if params.additionalRequirements else ''}
-
-I believe we can work together to find effective solutions that address these challenges. Please let me know when you might be available for a discussion.
-
-{tone_closing.get(params.tone, 'Best regards,')}
-[Your Name]"""
-        
-        return {
-            "subject": subject,
-            "body": body,
-            "success": True
-        }
+        return MultipleEmailGenerationResponse(
+            success=True,
+            message=f"Successfully generated {len(generated_emails)} emails",
+            generated_emails=generated_emails
+        )
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to generate email: {str(e)}")
+        print(f"[ERROR] Failed to generate emails: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to generate emails: {str(e)}")
 
 
 

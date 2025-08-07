@@ -6,10 +6,16 @@ import { X } from 'lucide-react';
 import EmailGenerationForm from './EmailGenerationForm';
 
 interface EmailGenerationParams {
+  mail_types: string[];
+  description: string;
   tone: string;
-  type: string;
-  painPoints: string;
-  additionalRequirements: string;
+  additional_requirements: string;
+}
+
+interface EmailSection {
+  id: string;
+  name: string;
+  emailData: any;
 }
 
 interface EmailGenerationDialogProps {
@@ -17,12 +23,13 @@ interface EmailGenerationDialogProps {
   onClose: () => void;
   onGenerate: (params: EmailGenerationParams) => void;
   isGenerating: boolean;
+  emailSections: EmailSection[];
 }
 
-const EmailGenerationDialog = ({ isOpen, onClose, onGenerate, isGenerating }: EmailGenerationDialogProps) => {
+const EmailGenerationDialog = ({ isOpen, onClose, onGenerate, isGenerating, emailSections }: EmailGenerationDialogProps) => {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl p-0 border-2 border-gray-900 rounded-xl">
+      <DialogContent className="max-w-2xl p-0 border-2 border-gray-900 rounded-xl shadow-2xl hover:shadow-3xl transition-shadow duration-300">
         <DialogHeader className="flex flex-row items-center justify-between px-6 py-4 bg-gray-900 text-white ">
           <DialogTitle className="text-xl font-semibold text-white">
             Email Generation Settings
@@ -37,10 +44,11 @@ const EmailGenerationDialog = ({ isOpen, onClose, onGenerate, isGenerating }: Em
           </Button>
         </DialogHeader>
         
-        <div className="p-6 bg-white rounded-b-xl">
+        <div className="p-6 bg-white rounded-b-xl shadow-inner">
           <EmailGenerationForm 
             onGenerate={onGenerate}
             isGenerating={isGenerating}
+            emailSections={emailSections}
           />
         </div>
       </DialogContent>

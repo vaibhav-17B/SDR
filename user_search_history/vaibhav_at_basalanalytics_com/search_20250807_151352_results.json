@@ -1,11 +1,14 @@
 {
-  "search_id": "search_20250806_144549",
+  "search_id": "search_20250807_151352",
   "search_params": {
+    "company_revenue": [
+      "0-1M"
+    ],
+    "seniority": [
+      "Entry"
+    ],
     "countries": [
       "United States"
-    ],
-    "states": [
-      "New York"
     ]
   },
   "results": [
@@ -332,5 +335,5 @@
     }
   ],
   "total_count": 3,
-  "timestamp": "2025-08-06T14:45:49.727581"
+  "timestamp": "2025-08-07T15:13:52.950791"
 }
