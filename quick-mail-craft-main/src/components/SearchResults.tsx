@@ -369,11 +369,26 @@ const SearchResults = ({ leads, onLeadClick, getLeadDisplayName, getLeadDisplayE
           className="flex items-center justify-between bg-white/15 hover:bg-white/20 rounded-lg p-4 cursor-pointer shadow-lg hover:shadow-xl transition-all duration-300 border border-white/20"
         >
           <div className="flex items-center space-x-4">
-            <Checkbox
-              checked={selectedLeads.size === leads.length && leads.length > 0}
-              onCheckedChange={handleSelectAll}
-              className="border-white data-[state=checked]:bg-white data-[state=checked]:text-gray-900 w-5 h-5"
-            />
+            <div 
+              className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all duration-200 cursor-pointer ${
+                selectedLeads.size === leads.length && leads.length > 0
+                  ? 'bg-white border-white' 
+                  : selectedLeads.size > 0
+                  ? 'bg-white/60 border-white'
+                  : 'border-white hover:border-white/80'
+              }`}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleSelectAll();
+              }}
+            >
+              {selectedLeads.size === leads.length && leads.length > 0 && (
+                <Check className="w-3 h-3 text-gray-900" />
+              )}
+              {selectedLeads.size > 0 && selectedLeads.size < leads.length && (
+                <div className="w-2 h-2 bg-gray-900 rounded-full" />
+              )}
+            </div>
             <span className="text-lg font-semibold text-white">
               {selectedLeads.size === 0 ? 'Select All Leads' : `${selectedLeads.size} of ${leads.length} leads selected`}
             </span>
@@ -482,12 +497,21 @@ const SearchResults = ({ leads, onLeadClick, getLeadDisplayName, getLeadDisplayE
             >
               <div className="flex items-center space-x-4">
                 <div className="flex-shrink-0">
-                  <Checkbox
-                    checked={selectedLeads.has(index)}
-                    onCheckedChange={() => handleLeadSelect(index)}
-                    onClick={(e) => e.stopPropagation()}
-                    className="mr-3 opacity-60 group-hover:opacity-100 transition-opacity data-[state=checked]:bg-gray-900 data-[state=checked]:border-gray-900 group-hover:border-gray-400 group-hover:shadow-sm data-[state=checked]:opacity-100"
-                  />
+                  <div 
+                    className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all duration-200 mr-3 opacity-60 group-hover:opacity-100 cursor-pointer ${
+                      selectedLeads.has(index)
+                        ? 'bg-gray-900 border-gray-900 group-hover:bg-white group-hover:border-white opacity-100' 
+                        : 'border-gray-400 group-hover:border-white hover:shadow-sm'
+                    }`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleLeadSelect(index);
+                    }}
+                  >
+                    {selectedLeads.has(index) && (
+                      <Check className={`w-3 h-3 transition-colors ${selectedLeads.has(index) ? 'text-white group-hover:text-gray-900' : ''}`} />
+                    )}
+                  </div>
                 </div>
                 <div className="flex-shrink-0">
                   {getLeadPhoto(lead) ? (

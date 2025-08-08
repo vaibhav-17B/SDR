@@ -291,3 +291,76 @@ class LogoutResponse(BaseModel):
     """Response model for logout"""
     message: str
     success: bool
+
+# ============ MAIL SESSIONS MODELS ============
+
+class EmailTemplate(BaseModel):
+    """Individual email template model"""
+    template_id: str  # e.g., "initial_mail", "follow_up_1", "follow_up_2"
+    template_name: str  # e.g., "Initial Outreach", "First Follow-up"
+    subject: Optional[str] = None
+    body: Optional[str] = None
+    cc: Optional[str] = None
+    bcc: Optional[str] = None
+    created_date: str
+    last_updated: str
+
+class MailListTemplates(BaseModel):
+    """Complete mail composition list with all email templates"""
+    list_id: str
+    list_name: str
+    description: Optional[str] = None
+    created_date: str
+    created_time: str
+    last_updated: str
+    mail_type: Optional[str] = None
+    status: Optional[str] = "draft"
+    user_email: str
+    templates: List[EmailTemplate] = []
+
+class MailCompositionList(BaseModel):
+    """Mail composition list metadata model (for CSV)"""
+    list_id: str
+    list_name: str
+    description: Optional[str] = None
+    created_date: str
+    created_time: str
+    last_updated: str
+    mail_type: Optional[str] = None
+    status: Optional[str] = "draft"
+    templates_count: Optional[int] = 0
+    json_file_path: Optional[str] = None  # Path to the JSON file containing templates (created on first save)
+
+class CreateMailListRequest(BaseModel):
+    """Request model for creating a new mail composition list"""
+    list_name: str
+    description: Optional[str] = None
+    mail_type: Optional[str] = None
+
+class UpdateMailListRequest(BaseModel):
+    """Request model for updating a mail composition list"""
+    list_id: str
+    list_name: Optional[str] = None
+    description: Optional[str] = None
+    status: Optional[str] = None
+
+class UpdateListTemplateRequest(BaseModel):
+    """Request model for updating list email templates"""
+    template_id: str
+    template_name: Optional[str] = None
+    subject: Optional[str] = None
+    body: Optional[str] = None
+    cc: Optional[str] = None
+    bcc: Optional[str] = None
+
+class MailListsResponse(BaseModel):
+    """Response model for mail composition lists"""
+    success: bool = True
+    mail_lists: List[MailCompositionList]
+    total_lists: int
+    user_email: Optional[str] = None
+
+class MailListTemplatesResponse(BaseModel):
+    """Response model for complete list with templates"""
+    success: bool = True
+    list: MailListTemplates

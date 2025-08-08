@@ -28,6 +28,9 @@ from base_models import (
     LeadSearchRequest, LeadSearchResponse,
     # Search history models
     SearchHistoryItem, SearchHistoryResponse, SearchByIdResponse, SearchDeleteResponse,
+    # Mail sessions models
+    MailCompositionList, MailListTemplates, EmailTemplate, CreateMailListRequest, 
+    UpdateMailListRequest, UpdateListTemplateRequest, MailListsResponse, MailListTemplatesResponse,
     # Prospects list models
     ProspectData, ProspectsListItem, ProspectsListResponse, CreateProspectsListRequest,
     CreateProspectsListResponse, AddProspectsRequest, AddProspectsResponse,
@@ -43,6 +46,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from csv_database import CSVUserDatabase
 from search_history_manager import SearchHistoryManager
 from prospects_list_manager import ProspectsListManager
+from mail_lists_manager import MailListsManager
 from studio import generate_multiple_emails, refine_email_content
 
 
@@ -54,6 +58,7 @@ email_sender=email_helper()
 csv_db = CSVUserDatabase()  # Initialize CSV database
 search_history_manager = SearchHistoryManager()  # Initialize search history manager
 prospects_list_manager = ProspectsListManager()  # Initialize prospects list manager
+mail_lists_manager = MailListsManager()  # Initialize mail lists manager
 scheduler = BackgroundScheduler(timezone="UTC")
 scheduler.start()
 
@@ -1645,6 +1650,442 @@ async def remove_prospect_from_list(list_id: str, prospect_index: int, request: 
     except Exception as e:
         print(f"❌ Error removing prospect from list: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to remove prospect from list: {str(e)}")
+
+# ============ MAIL SESSIONS ENDPOINTS ============
+
+@app.get("/api/mail-sessions", response_model=MailListsResponse)
+async def get_mail_lists(request: Request):
+    """Get all mail composition lists for the authenticated user"""
+    try:
+        print(f"\n📧 API REQUEST: GET_MAIL_LISTS")
+        
+        # Get session ID from headers
+        x_session_id = request.headers.get("x-session-id")
+        if not x_session_id:
+            print(f"❌ API ERROR: No session ID provided")
+            raise HTTPException(status_code=401, detail="Session ID required")
+        
+        # Get user email from session
+        user_email = None
+        session_data = RedisManager.get_session_data(x_session_id)
+        
+        if session_data and 'user_email' in session_data:
+            user_email = session_data['user_email']
+            print(f"✅ Found user email from Redis: {user_email}")
+        else:
+            # Try to get from token file
+            token_file = user_manager.get_user_token_file(x_session_id)
+            if token_file:
+                user_info = user_manager.get_user_info_from_token_file(token_file)
+                if user_info:
+                    user_email = user_info.get('email')
+                    print(f"✅ Found user email from token file: {user_email}")
+        
+        if not user_email:
+            print(f"❌ API ERROR: User email not found for session {x_session_id}")
+            raise HTTPException(status_code=401, detail="User email not found. Please authenticate first.")
+        
+        print(f"📧 Fetching mail composition lists for user: {user_email}")
+        
+        # Get mail composition lists from manager
+        mail_lists = mail_lists_manager.get_all_lists(user_email=user_email)
+        
+        print(f"✅ Retrieved {len(mail_lists)} mail composition lists for {user_email}")
+        print(f"[DEBUG] Mail Lists: {mail_lists}")
+        return {
+            "success": True,
+            "mail_lists": mail_lists,     # Change from mail_sessions
+            "total_lists": len(mail_lists),           # Change from total_sessions
+            "user_email": user_email
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Error fetching mail sessions: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch mail sessions: {str(e)}")
+
+@app.post("/api/mail-sessions")
+async def create_mail_list(list_request: CreateMailListRequest, request: Request):
+    """Create a new mail composition list"""
+    try:
+        print(f"\n➕ API REQUEST: CREATE_MAIL_LIST")
+        print(f"API Body Params:{list_request.dict()}")
+        print(f"List name: {list_request.list_name}")
+        
+        # Get session ID from headers
+        x_session_id = request.headers.get("x-session-id")
+        if not x_session_id:
+            print(f"❌ API ERROR: No session ID provided")
+            raise HTTPException(status_code=401, detail="Session ID required")
+        
+        # Get user email from session
+        user_email = None
+        session_data = RedisManager.get_session_data(x_session_id)
+        
+        if session_data and 'user_email' in session_data:
+            user_email = session_data['user_email']
+            print(f"✅ Found user email from Redis: {user_email}")
+        else:
+            # Try to get from token file
+            token_file = user_manager.get_user_token_file(x_session_id)
+            if token_file:
+                user_info = user_manager.get_user_info_from_token_file(token_file)
+                if user_info:
+                    user_email = user_info.get('email')
+                    print(f"✅ Found user email from token file: {user_email}")
+        
+        if not user_email:
+            print(f"❌ API ERROR: User email not found for session {x_session_id}")
+            raise HTTPException(status_code=401, detail="User email not found. Please authenticate first.")
+        
+        # Create mail composition list
+        new_session = mail_lists_manager.create_list(list_request, user_email)
+        
+        print(f"✅ Created mail composition list: {new_session.list_id} for {user_email}")
+        
+        return {
+            "success": True,
+            "session": new_session,
+            "message": "Mail composition list created successfully"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Error creating mail session: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to create mail session: {str(e)}")
+
+@app.put("/api/mail-sessions/{session_id}")
+async def update_mail_session(session_id: str, session_request: UpdateMailListRequest, request: Request):
+    """Update an existing mail session"""
+    try:
+        print(f"\n📝 API REQUEST: UPDATE_MAIL_SESSION")
+        print(f"Session ID: {session_id}")
+        
+        # Get session ID from headers
+        x_session_id = request.headers.get("x-session-id")
+        if not x_session_id:
+            print(f"❌ API ERROR: No session ID provided")
+            raise HTTPException(status_code=401, detail="Session ID required")
+        
+        # Get user email from session
+        user_email = None
+        session_data = RedisManager.get_session_data(x_session_id)
+        
+        if session_data and 'user_email' in session_data:
+            user_email = session_data['user_email']
+            print(f"✅ Found user email from Redis: {user_email}")
+        else:
+            # Try to get from token file
+            token_file = user_manager.get_user_token_file(x_session_id)
+            if token_file:
+                user_info = user_manager.get_user_info_from_token_file(token_file)
+                if user_info:
+                    user_email = user_info.get('email')
+                    print(f"✅ Found user email from token file: {user_email}")
+        
+        if not user_email:
+            print(f"❌ API ERROR: User email not found for session {x_session_id}")
+            raise HTTPException(status_code=401, detail="User email not found. Please authenticate first.")
+        
+        # Ensure session_id matches the URL parameter
+        session_request.session_id = session_id
+        
+        # Update mail session metadata
+        updated_session = mail_lists_manager.update_list_metadata(session_request, user_email)
+        
+        if not updated_session:
+            raise HTTPException(status_code=404, detail="Mail session not found")
+        
+        print(f"✅ Updated mail session: {session_id} for {user_email}")
+        
+        return {
+            "success": True,
+            "session": updated_session,
+            "message": "Mail session updated successfully"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Error updating mail session: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to update mail session: {str(e)}")
+
+@app.delete("/api/mail-sessions/{list_id}")
+async def delete_mail_session(list_id: str, request: Request):
+    """Delete a mail session"""
+    try:
+        print(f"\n🗑️ API REQUEST: DELETE_MAIL_SESSION")
+        print(f"List ID: {list_id}")
+        
+        # Get session ID from headers
+        x_session_id = request.headers.get("x-session-id")
+        if not x_session_id:
+            print(f"❌ API ERROR: No session ID provided")
+            raise HTTPException(status_code=401, detail="Session ID required")
+        
+        # Get user email from session
+        user_email = None
+        session_data = RedisManager.get_session_data(x_session_id)
+        
+        if session_data and 'user_email' in session_data:
+            user_email = session_data['user_email']
+            print(f"✅ Found user email from Redis: {user_email}")
+        else:
+            # Try to get from token file
+            token_file = user_manager.get_user_token_file(x_session_id)
+            if token_file:
+                user_info = user_manager.get_user_info_from_token_file(token_file)
+                if user_info:
+                    user_email = user_info.get('email')
+                    print(f"✅ Found user email from token file: {user_email}")
+        
+        if not user_email:
+            print(f"❌ API ERROR: User email not found for session {x_session_id}")
+            raise HTTPException(status_code=401, detail="User email not found. Please authenticate first.")
+        
+        # Delete mail session
+        success = mail_lists_manager.delete_list(list_id, user_email)
+        
+        if not success:
+            raise HTTPException(status_code=404, detail="Mail session not found")
+        
+        print(f"✅ Deleted mail session: {list_id} for {user_email}")
+        
+        return {
+            "success": True,
+            "message": "Mail session deleted successfully"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Error deleting mail session: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to delete mail session: {str(e)}")
+
+@app.get("/api/mail-sessions/{session_id}/templates", response_model=MailListTemplatesResponse)
+async def get_session_templates(session_id: str, request: Request):
+    """Get session with all email templates"""
+    try:
+        print(f"\n📧 API REQUEST: GET_SESSION_TEMPLATES")
+        print(f"Session ID: {session_id}")
+        
+        # Get session ID from headers
+        x_session_id = request.headers.get("x-session-id")
+        if not x_session_id:
+            print(f"❌ API ERROR: No session ID provided")
+            raise HTTPException(status_code=401, detail="Session ID required")
+        
+        # Get user email from session
+        user_email = None
+        session_data = RedisManager.get_session_data(x_session_id)
+        
+        if session_data and 'user_email' in session_data:
+            user_email = session_data['user_email']
+            print(f"✅ Found user email from Redis: {user_email}")
+        else:
+            # Try to get from token file
+            token_file = user_manager.get_user_token_file(x_session_id)
+            if token_file:
+                user_info = user_manager.get_user_info_from_token_file(token_file)
+                if user_info:
+                    user_email = user_info.get('email')
+                    print(f"✅ Found user email from token file: {user_email}")
+        
+        if not user_email:
+            print(f"❌ API ERROR: User email not found for session {x_session_id}")
+            raise HTTPException(status_code=401, detail="User email not found. Please authenticate first.")
+        
+        # Get session templates
+        list_templates = mail_lists_manager.get_list_templates(user_email, session_id)
+        
+        if not list_templates:
+            raise HTTPException(status_code=404, detail="Session templates not found")
+        
+        print(f"✅ Retrieved list templates for: {session_id}")
+        
+        return {
+            "success": True,
+            "list": list_templates
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Error fetching session templates: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch session templates: {str(e)}")
+
+@app.put("/api/mail-sessions/{session_id}/templates")
+async def update_session_templates(session_id: str, templates_update: UpdateListTemplateRequest, request: Request):
+    """Update specific template in session"""
+    try:
+        print(f"\n✏️ API REQUEST: UPDATE_SESSION_TEMPLATES")
+        print(f"Session ID: {session_id}")
+        print(f"Template ID: {templates_update.template_id}")
+        
+        # Get session ID from headers
+        x_session_id = request.headers.get("x-session-id")
+        if not x_session_id:
+            print(f"❌ API ERROR: No session ID provided")
+            raise HTTPException(status_code=401, detail="Session ID required")
+        
+        # Get user email from session
+        user_email = None
+        session_data = RedisManager.get_session_data(x_session_id)
+        
+        if session_data and 'user_email' in session_data:
+            user_email = session_data['user_email']
+            print(f"✅ Found user email from Redis: {user_email}")
+        else:
+            # Try to get from token file
+            token_file = user_manager.get_user_token_file(x_session_id)
+            if token_file:
+                user_info = user_manager.get_user_info_from_token_file(token_file)
+                if user_info:
+                    user_email = user_info.get('email')
+                    print(f"✅ Found user email from token file: {user_email}")
+        
+        if not user_email:
+            print(f"❌ API ERROR: User email not found for session {x_session_id}")
+            raise HTTPException(status_code=401, detail="User email not found. Please authenticate first.")
+        
+        # Get current session templates
+        session_templates = mail_lists_manager.get_list_templates(user_email, session_id)
+        
+        if not session_templates:
+            raise HTTPException(status_code=404, detail="Session templates not found")
+        
+        # Update the specific template
+        template_found = False
+        for template in session_templates.templates:
+            if template.template_id == templates_update.template_id:
+                # Update fields if provided
+                if templates_update.template_name is not None:
+                    template.template_name = templates_update.template_name
+                if templates_update.subject is not None:
+                    template.subject = templates_update.subject
+                if templates_update.body is not None:
+                    template.body = templates_update.body
+                if templates_update.cc is not None:
+                    template.cc = templates_update.cc
+                if templates_update.bcc is not None:
+                    template.bcc = templates_update.bcc
+                
+                # Update timestamp
+                template.last_updated = datetime.now().strftime("%Y-%m-%d")
+                template_found = True
+                break
+        
+        if not template_found:
+            raise HTTPException(status_code=404, detail=f"Template '{templates_update.template_id}' not found")
+        
+        # Save updated templates
+        success = mail_lists_manager.update_list_templates(user_email, session_id, session_templates.templates)
+        
+        if not success:
+            raise HTTPException(status_code=500, detail="Failed to update session templates")
+        
+        print(f"✅ Updated template {templates_update.template_id} in session {session_id}")
+        
+        return {
+            "success": True,
+            "message": "Session template updated successfully"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Error updating session templates: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to update session templates: {str(e)}")
+
+@app.put("/api/mail-sessions/{session_id}/templates/batch")
+async def update_all_session_templates(session_id: str, request: Request):
+    """Update all session templates at once"""
+    try:
+        print(f"\n📧 API REQUEST: UPDATE_ALL_SESSION_TEMPLATES")
+        print(f"Session ID: {session_id}")
+        
+        # Get session ID from headers
+        x_session_id = request.headers.get("x-session-id")
+        if not x_session_id:
+            print(f"❌ API ERROR: No session ID provided")
+            raise HTTPException(status_code=401, detail="Session ID required")
+        
+        # Parse request body
+        body = await request.json()
+        templates_data = body.get('templates', [])
+        
+        if not templates_data:
+            raise HTTPException(status_code=400, detail="No templates data provided")
+        
+        print(f"📧 Received {len(templates_data)} templates to save")
+        
+        # Get user email from session
+        user_email = None
+        session_data = RedisManager.get_session_data(x_session_id)
+        
+        if session_data and 'user_email' in session_data:
+            user_email = session_data['user_email']
+            print(f"✅ Found user email from Redis: {user_email}")
+        else:
+            # Try to get from token file
+            token_file = user_manager.get_user_token_file(x_session_id)
+            if token_file:
+                user_info = user_manager.get_user_info_from_token_file(token_file)
+                if user_info:
+                    user_email = user_info.get('email')
+                    print(f"✅ Found user email from token file: {user_email}")
+        
+        if not user_email:
+            print(f"❌ API ERROR: User email not found for session {x_session_id}")
+            raise HTTPException(status_code=401, detail="User email not found. Please authenticate first.")
+        
+        # Check if the list exists (but templates may not be saved yet)
+        lists = mail_lists_manager.get_all_lists(user_email)
+        list_exists = any(list_item.list_id == session_id for list_item in lists)
+        
+        if not list_exists:
+            raise HTTPException(status_code=404, detail="Mail list not found")
+        
+        print(f"✅ Found mail list: {session_id}, proceeding with template save")
+        
+        # Convert template data to EmailTemplate objects
+        print(f"📧 Processing {len(templates_data)} templates:")
+        updated_templates = []
+        for i, template_data in enumerate(templates_data):
+            print(f"  Template {i+1}: {template_data.get('template_id')} - Subject: '{template_data.get('subject', '')[:50]}...'")
+            email_template = EmailTemplate(
+                template_id=template_data.get('template_id'),
+                template_name=template_data.get('template_name'),
+                subject=template_data.get('subject', ''),
+                body=template_data.get('body', ''),
+                cc=template_data.get('cc', ''),
+                bcc=template_data.get('bcc', ''),
+                created_date=template_data.get('created_date', datetime.now().strftime("%Y-%m-%d")),
+                last_updated=datetime.now().strftime("%Y-%m-%d")
+            )
+            updated_templates.append(email_template)
+        
+        # Save all updated templates
+        success = mail_lists_manager.update_list_templates(user_email, session_id, updated_templates)
+        
+        if not success:
+            raise HTTPException(status_code=500, detail="Failed to update all session templates")
+        
+        print(f"✅ Updated all {len(updated_templates)} templates in session {session_id}")
+        
+        return {
+            "success": True,
+            "message": f"Successfully updated {len(updated_templates)} email templates",
+            "templates_count": len(updated_templates)
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Error updating all session templates: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to update all session templates: {str(e)}")
 
 
 if __name__ == "__main__":

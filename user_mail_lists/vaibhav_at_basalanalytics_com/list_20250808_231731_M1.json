@@ -1,0 +1,103 @@
+{
+  "list_id": "list-395ad343",
+  "list_name": "M1",
+  "description": "No",
+  "created_date": "2025-08-08",
+  "created_time": "23:12",
+  "last_updated": "2025-08-08 23:18:29",
+  "mail_type": null,
+  "status": "draft",
+  "user_email": "vaibhav@basalanalytics.com",
+  "templates": [
+    {
+      "template_id": "initial_mail",
+      "template_name": "Initial Email",
+      "subject": "Exploring solutions for [Prospect's Company]",
+      "body": "Hi [First Name],\n\nI hope this email finds you well! I came across [Prospect's Company] and was impressed by [specific detail about their company or recent achievement]. As someone leading [specific role or department], I imagine you're constantly seeking ways to [specific pain point or goal related to their role].\n\nAt [Your Company], we specialize in [specific solution or service], helping organizations like yours achieve [specific benefit or outcome]. For instance, we recently worked with [similar company or industry example] and helped them [specific result].\n\nI’d love to learn more about your current initiatives and see how we might be able to assist. Would you be open to a quick call next week?\n\nLooking forward to your thoughts!\n\nBest regards,\n[Your Name]  \n[Your Position]  \n[Your Contact Info]",
+      "cc": "",
+      "bcc": "",
+      "created_date": "2025-08-08",
+      "last_updated": "2025-08-08"
+    },
+    {
+      "template_id": "follow_up_1",
+      "template_name": "Follow Up 1",
+      "subject": "",
+      "body": "",
+      "cc": "",
+      "bcc": "",
+      "created_date": "2025-08-08",
+      "last_updated": "2025-08-08"
+    },
+    {
+      "template_id": "follow_up_2",
+      "template_name": "Follow Up 2",
+      "subject": "",
+      "body": "",
+      "cc": "",
+      "bcc": "",
+      "created_date": "2025-08-08",
+      "last_updated": "2025-08-08"
+    },
+    {
+      "template_id": "follow_up_3",
+      "template_name": "Follow Up 3",
+      "subject": "",
+      "body": "",
+      "cc": "",
+      "bcc": "",
+      "created_date": "2025-08-08",
+      "last_updated": "2025-08-08"
+    },
+    {
+      "template_id": "reply_interested",
+      "template_name": "Reply Interested",
+      "subject": "Excited to connect and discuss more!",
+      "body": "Hi [First Name],\n\nThank you for your interest! I’m thrilled to hear that [specific point they mentioned or expressed interest in]. At [Your Company], we’re passionate about helping companies like [Prospect's Company] achieve [specific goal or benefit].\n\nLet’s schedule a time to chat and explore how we can support your goals. Are you available [suggest 2-3 specific times]? Alternatively, feel free to share a time that works best for you.\n\nLooking forward to connecting!\n\nWarm regards,  \n[Your Name]  \n[Your Position]  \n[Your Contact Info]",
+      "cc": "",
+      "bcc": "",
+      "created_date": "2025-08-08",
+      "last_updated": "2025-08-08"
+    },
+    {
+      "template_id": "reply_not_interested",
+      "template_name": "Reply Not Interested",
+      "subject": "",
+      "body": "",
+      "cc": "",
+      "bcc": "",
+      "created_date": "2025-08-08",
+      "last_updated": "2025-08-08"
+    },
+    {
+      "template_id": "reply_meeting_requested",
+      "template_name": "Reply Meeting Requested",
+      "subject": "",
+      "body": "",
+      "cc": "",
+      "bcc": "",
+      "created_date": "2025-08-08",
+      "last_updated": "2025-08-08"
+    },
+    {
+      "template_id": "follow_up_4",
+      "template_name": "Follow Up 4",
+      "subject": "Final attempt to connect with you",
+      "body": "Hi [First Name],\n\nI hope this email finds you well. I just wanted to follow up one last time regarding [specific topic or solution discussed in previous emails]. I completely understand that your time is valuable, and I don’t want to be intrusive. However, I strongly believe that [specific benefit or solution] could make a significant impact for [Prospect's Company].\n\nIf you're interested, I’d be happy to share more details or set up a quick chat to discuss further. Otherwise, I’ll assume this might not be the right time and step back respectfully.\n\nThank you for considering, and I’m here if you ever want to revisit this in the future.\n\nBest wishes,  \n[Your Name]  \n[Your Position]  \n[Your Contact Info]",
+      "cc": "",
+      "bcc": "",
+      "created_date": "2025-08-08",
+      "last_updated": "2025-08-08"
+    },
+    {
+      "template_id": "follow_up_5",
+      "template_name": "Follow Up 5",
+      "subject": "Still open to discussing solutions?",
+      "body": "Hi [First Name],\n\nI hope this message finds you well! I wanted to check in, as I understand how busy schedules can get. If you're still considering solutions for [specific challenge or area of focus], I'd love to help and share how our approach has assisted others in your industry.\n\nNo rush—just let me know if you'd like to explore this further. Could I send over some additional details or set up a quick call?\n\nLooking forward to connecting when the time is right.\n\nBest regards,\n\n[Your Name]  \n[Your Position]  \n[Your Company]  \n[Your Contact Information]",
+      "cc": "",
+      "bcc": "",
+      "created_date": "2025-08-08",
+      "last_updated": "2025-08-08"
+    }
+  ]
+}

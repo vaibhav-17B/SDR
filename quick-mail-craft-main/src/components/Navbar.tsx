@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Mail, Search, User, LogOut, Home } from 'lucide-react';
+import { Mail, Search, User, LogOut, Home, Target } from 'lucide-react';
 import UserProfileSidebar from './UserProfileSidebar';
 import { checkAuthStatus } from '@/utils/session';
 import { API_CONFIG } from '@/config/api';
@@ -146,6 +146,19 @@ const Navbar = ({ userEmail, isAuthenticated, onSignOut }: NavbarProps) => {
                 >
                   <Mail className="w-4 h-4" />
                   <span>Studio</span>
+                </Button>
+              </Link>
+              <Link to="/campaigns">
+                <Button 
+                  variant="ghost"
+                  className={`flex items-center space-x-2 shadow-md hover:shadow-lg transition-shadow duration-300 ${
+                    isActive('/campaigns')
+                      ? 'bg-gray-900 text-white shadow-lg' 
+                      : 'border-gray-300 text-gray-900 hover:bg-gray-900 hover:text-white'
+                  }`}
+                >
+                  <Target className="w-4 h-4" />
+                  <span>Campaigns</span>
                 </Button>
               </Link>
             </div>

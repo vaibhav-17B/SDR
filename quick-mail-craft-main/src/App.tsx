@@ -8,6 +8,7 @@ import Onboard from "./pages/Onboard";
 import UserInfo from "./pages/UserInfo";
 import Prospects from "./pages/Prospects";
 import Studio from "./pages/Studio";
+import Campaigns from "./pages/Campaigns";
 import NotFound from "./pages/NotFound";
 import { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
@@ -54,9 +55,9 @@ const AppContent = () => {
   // Only refresh auth status on specific route changes that matter
   useEffect(() => {
     // Only refresh on routes where auth status might have changed
-    if (location.pathname === '/user-info' || location.pathname === '/prospects' || location.pathname === '/studio') {
+    if (location.pathname === '/user-info' || location.pathname === '/prospects' || location.pathname === '/studio' || location.pathname === '/campaigns') {
       // Use cached version unless coming from user-info (profile completion)
-      const shouldForceRefresh = (location.pathname === '/prospects' || location.pathname === '/studio') && 
+      const shouldForceRefresh = (location.pathname === '/prospects' || location.pathname === '/studio' || location.pathname === '/campaigns') && 
                                 document.referrer.includes('/user-info');
       refreshAuthStatus(shouldForceRefresh);
     }
@@ -96,6 +97,7 @@ const AppContent = () => {
         <Route path="/user-info" element={<UserInfo onAuthChange={setAuthState} />} />
         <Route path="/prospects" element={<Prospects />} />
         <Route path="/studio" element={<Studio onAuthChange={setAuthState} />} />
+        <Route path="/campaigns" element={<Campaigns />} />
         {/* Backward compatibility redirects */}
         <Route path="/find-leads" element={<Prospects />} />
         <Route path="/email-composer" element={<Studio onAuthChange={setAuthState} />} />

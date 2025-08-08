@@ -7,11 +7,6 @@ export interface EmailData {
   body: string;
   cc: string;
   bcc: string;
-  intervalType: 'daily' | 'specific' | 'exclude-weekends';
-  selectedDays: string[];
-  time: string;
-  timezone: string;
-  includeScheduling: boolean;
 }
 
 export interface EmailSection {
@@ -39,12 +34,7 @@ export const useEmailSections = () => {
         subject: '',
         body: '',
         cc: '',
-        bcc: '',
-        intervalType: 'daily',
-        selectedDays: [],
-        time: '09:00',
-        timezone: 'UTC',
-        includeScheduling: false
+        bcc: ''
       }
     },
     {
@@ -55,12 +45,7 @@ export const useEmailSections = () => {
         subject: '',
         body: '',
         cc: '',
-        bcc: '',
-        intervalType: 'daily',
-        selectedDays: [],
-        time: '09:00',
-        timezone: 'UTC',
-        includeScheduling: false
+        bcc: ''
       }
     },
     {
@@ -71,12 +56,7 @@ export const useEmailSections = () => {
         subject: '',
         body: '',
         cc: '',
-        bcc: '',
-        intervalType: 'daily',
-        selectedDays: [],
-        time: '09:00',
-        timezone: 'UTC',
-        includeScheduling: false
+        bcc: ''
       }
     },
     {
@@ -87,12 +67,7 @@ export const useEmailSections = () => {
         subject: '',
         body: '',
         cc: '',
-        bcc: '',
-        intervalType: 'daily',
-        selectedDays: [],
-        time: '09:00',
-        timezone: 'UTC',
-        includeScheduling: false
+        bcc: ''
       }
     },
     {
@@ -103,12 +78,7 @@ export const useEmailSections = () => {
         subject: '',
         body: '',
         cc: '',
-        bcc: '',
-        intervalType: 'daily',
-        selectedDays: [],
-        time: '09:00',
-        timezone: 'UTC',
-        includeScheduling: false
+        bcc: ''
       }
     },
     {
@@ -119,12 +89,7 @@ export const useEmailSections = () => {
         subject: '',
         body: '',
         cc: '',
-        bcc: '',
-        intervalType: 'daily',
-        selectedDays: [],
-        time: '09:00',
-        timezone: 'UTC',
-        includeScheduling: false
+        bcc: ''
       }
     },
     {
@@ -135,12 +100,7 @@ export const useEmailSections = () => {
         subject: '',
         body: '',
         cc: '',
-        bcc: '',
-        intervalType: 'daily',
-        selectedDays: [],
-        time: '09:00',
-        timezone: 'UTC',
-        includeScheduling: false
+        bcc: ''
       }
     }
   ]);
@@ -166,12 +126,7 @@ export const useEmailSections = () => {
         subject: '',
         body: '',
         cc: '',
-        bcc: '',
-        intervalType: 'daily',
-        selectedDays: [],
-        time: '09:00',
-        timezone: 'UTC',
-        includeScheduling: false
+        bcc: ''
       }
     };
 
@@ -202,7 +157,7 @@ export const useEmailSections = () => {
     return emailSections.find(section => section.id === activeSection)?.emailData || emailSections[0].emailData;
   }, [emailSections, activeSection]);
 
-  const handleInputChange = useCallback((field: keyof EmailData, value: string | string[] | boolean) => {
+  const handleInputChange = useCallback((field: keyof EmailData, value: string) => {
     setEmailSections(prev => prev.map(section => 
       section.id === activeSection 
         ? {
@@ -226,12 +181,7 @@ export const useEmailSections = () => {
               subject: '',
               body: '',
               cc: '',
-              bcc: '',
-              intervalType: 'daily',
-              selectedDays: [],
-              time: '09:00',
-              timezone: 'UTC',
-              includeScheduling: false
+              bcc: ''
             }
           }
         : section

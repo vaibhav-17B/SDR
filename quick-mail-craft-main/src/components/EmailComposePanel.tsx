@@ -3,32 +3,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
-import { Mail, Send, Loader2, ChevronDown, Clock, Users, User, Sparkles, Bold, Italic, Underline, List, Link, Type, AlignLeft, AlignCenter, AlignRight, Code, Quote, X, Wand2 } from 'lucide-react';
-import EmailInterval from './EmailInterval';
+import { Mail, Save, Loader2, Users, User, Sparkles, Bold, Italic, Underline, List, Link, Type, AlignLeft, AlignCenter, AlignRight, Code, Quote, X, Wand2, Plus, FileText, ArrowLeft } from 'lucide-react';
 import { API_CONFIG } from '@/config/api';
 import { getSessionId } from '@/utils/session';
 import { toast } from '@/components/ui/sonner';
 
-interface Lead {
-  [key: string]: any;
-  email_list?: string[];
-}
-
-interface ProspectsListItem {
-  list_id: string;
-  list_name: string;
-  description: string;
-  created_date: string;
-  created_time: string;
-  total_prospects: number;
-  prospects: Lead[];
-  last_updated: string;
-  tags: string[];
-}
 
 interface EmailSection {
   id: string;
@@ -39,11 +19,6 @@ interface EmailSection {
     body: string;
     cc?: string;
     bcc?: string;
-    intervalType: 'daily' | 'specific' | 'exclude-weekends';
-    selectedDays: string[];
-    time: string;
-    timezone: string;
-    includeScheduling: boolean;
   };
 }
 
@@ -53,35 +28,31 @@ interface EmailData {
   body: string;
   cc: string;
   bcc: string;
-  intervalType: 'daily' | 'specific' | 'exclude-weekends';
-  selectedDays: string[];
-  time: string;
-  timezone: string;
-  includeScheduling: boolean;
 }
 
 interface EmailComposePanelProps {
   emailSections: EmailSection[];
   activeSection: string;
-  onEmailDataChange: (field: keyof EmailData, value: string | string[] | boolean) => void;
-  onSendEmail: () => void;
-  isSending: boolean;
+  onEmailDataChange: (field: keyof EmailData, value: string) => void;
+  onSaveEmail: (sessionId: string, templateId: string) => void;
+  isSaving: boolean;
   onGenerateEmail: () => void;
+  onBackToLists?: () => void;
+  sessionId?: string;
+  templateId?: string;
 }
 
 const EmailComposePanel = ({
   emailSections,
   activeSection,
   onEmailDataChange,
-  onSendEmail,
-  isSending,
-  onGenerateEmail
+  onSaveEmail,
+  isSaving,
+  onGenerateEmail,
+  onBackToLists,
+  sessionId = '',
+  templateId = ''
 }: EmailComposePanelProps) => {
-  const [showAdvanced, setShowAdvanced] = React.useState(false);
-  const [prospectsLists, setProspectsLists] = useState<ProspectsListItem[]>([]);
-  const [selectedProspects, setSelectedProspects] = useState<string[]>([]);
-  const [isLoadingProspects, setIsLoadingProspects] = useState(false);
-  const [expandedLists, setExpandedLists] = useState<Set<string>>(new Set());
   const [showFormattingTools, setShowFormattingTools] = useState(false);
   const [showRefineSection, setShowRefineSection] = useState(false);
   const [refinementInstructions, setRefinementInstructions] = useState('');
@@ -93,237 +64,20 @@ const EmailComposePanel = ({
     subject: '',
     body: '',
     cc: '',
-    bcc: '',
-    intervalType: 'daily' as const,
-    selectedDays: [],
-    time: '09:00',
-    timezone: 'UTC',
-    includeScheduling: false
+    bcc: ''
   };
 
   const hasGeneratedContent = emailData.subject || emailData.body;
 
-  useEffect(() => {
-    fetchProspectsLists();
-  }, []);
 
-  const fetchProspectsLists = async () => {
-    try {
-      setIsLoadingProspects(true);
-      const sessionId = getSessionId();
-      
-      if (!sessionId) {
-        return;
-      }
 
-      const response = await fetch(`${API_CONFIG.BASE_URL}/api/prospects-lists`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'ngrok-skip-browser-warning': 'true',
-          'X-Session-ID': sessionId
-        }
-      });
 
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success && data.prospects_lists) {
-          setProspectsLists(data.prospects_lists);
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching prospects lists:', error);
-    } finally {
-      setIsLoadingProspects(false);
-    }
-  };
 
-  const handleListToggle = (listId: string) => {
-    const newExpanded = new Set(expandedLists);
-    if (newExpanded.has(listId)) {
-      newExpanded.delete(listId);
-    } else {
-      newExpanded.add(listId);
-      // Auto-scroll to show expanded prospects after a short delay
-      setTimeout(() => {
-        const expandedElement = document.querySelector(`[data-list-id="${listId}"]`);
-        if (expandedElement) {
-          expandedElement.scrollIntoView({ 
-            behavior: 'smooth', 
-            block: 'nearest',
-            inline: 'nearest'
-          });
-        }
-      }, 100);
-    }
-    setExpandedLists(newExpanded);
-  };
-
-  const handleListSelect = (listId: string, event: React.MouseEvent) => {
-    event.stopPropagation();
-    
-    const list = prospectsLists.find(l => l.list_id === listId);
-    if (!list) return;
-    
-    const listEmails = list.prospects
-      .map(p => getLeadDisplayEmail(p))
-      .filter(email => email !== 'No email');
-    
-    const allListProspectsSelected = listEmails.every(email => selectedProspects.includes(email));
-    
-    let newSelected;
-    if (allListProspectsSelected) {
-      newSelected = selectedProspects.filter(email => !listEmails.includes(email));
-    } else {
-      newSelected = [...new Set([...selectedProspects, ...listEmails])];
-    }
-    
-    setSelectedProspects(newSelected);
-    onEmailDataChange('to', newSelected.join(', '));
-  };
-
-  const handleProspectToggle = (prospectEmail: string) => {
-    const newSelected = selectedProspects.includes(prospectEmail)
-      ? selectedProspects.filter(email => email !== prospectEmail)
-      : [...selectedProspects, prospectEmail];
-    
-    setSelectedProspects(newSelected);
-    onEmailDataChange('to', newSelected.join(', '));
-  };
-
-  const removeSelectedProspect = (emailToRemove: string) => {
-    const newSelected = selectedProspects.filter(email => email !== emailToRemove);
-    setSelectedProspects(newSelected);
-    onEmailDataChange('to', newSelected.join(', '));
-  };
-
-  const getListSelectionState = (list: ProspectsListItem) => {
-    const listEmails = list.prospects
-      .map(p => getLeadDisplayEmail(p))
-      .filter(email => email !== 'No email');
-    
-    if (listEmails.length === 0) return 'none';
-    
-    const selectedCount = listEmails.filter(email => selectedProspects.includes(email)).length;
-    
-    if (selectedCount === 0) return 'none';
-    if (selectedCount === listEmails.length) return 'all';
-    return 'partial';
-  };
-
-  const getLeadDisplayEmail = (lead: Lead): string => {
-    if (lead.email_list && Array.isArray(lead.email_list) && lead.email_list.length > 0) {
-      return lead.email_list[0];
-    }
-    if (lead.personal_information?.primary_professional_email) {
-      return lead.personal_information.primary_professional_email;
-    }
-    if (lead.contact_information?.primary_email) {
-      return lead.contact_information.primary_email;
-    }
-    if (lead.email && lead.email !== 'undefined' && lead.email !== '') return lead.email;
-    if (lead.work_email && lead.work_email !== 'undefined' && lead.work_email !== '') return lead.work_email;
-    if (lead.personal_email && lead.personal_email !== 'undefined' && lead.personal_email !== '') return lead.personal_email;
-    if (lead.business_email && lead.business_email !== 'undefined' && lead.business_email !== '') return lead.business_email;
-    if (lead.company_email && lead.company_email !== 'undefined' && lead.company_email !== '') return lead.company_email;
-    return 'No email';
-  };
-
-  const getLeadDisplayName = (lead: Lead): string => {
-    if (lead.personal_information?.full_name && lead.personal_information.full_name !== 'undefined' && lead.personal_information.full_name !== '') {
-      return lead.personal_information.full_name;
-    }
-    if (lead.full_name && lead.full_name !== 'undefined' && lead.full_name !== '') return lead.full_name;
-    if (lead.name && lead.name !== 'undefined' && lead.name !== '') return lead.name;
-    
-    let firstName = lead.first_name || lead.firstname || lead.personal_information?.first_name || '';
-    let lastName = lead.last_name || lead.lastname || lead.personal_information?.last_name || '';
-    
-    if (firstName && firstName !== 'undefined' && firstName !== '') {
-      if (lastName && lastName !== 'undefined' && lastName !== '') {
-        return `${firstName} ${lastName}`.trim();
-      }
-      return firstName;
-    }
-    
-    if (lastName && lastName !== 'undefined' && lastName !== '') {
-      return lastName;
-    }
-    
-    if (lead.linkedin_url) return 'LinkedIn Contact';
-    if (lead.company_name && lead.company_name !== 'undefined') return `Contact from ${lead.company_name}`;
-    if (lead.work_experience?.[0]?.company_name) return `Contact from ${lead.work_experience[0].company_name}`;
-    
-    return 'Unknown Contact';
-  };
-
-  const getLeadPhoto = (lead: Lead): string | undefined => {
-    if (lead.personal_information?.picture_url && lead.personal_information.picture_url !== 'undefined' && lead.personal_information.picture_url !== '') {
-      return lead.personal_information.picture_url;
-    }
-    if (lead.photo_url && lead.photo_url !== 'undefined' && lead.photo_url !== '') return lead.photo_url;
-    if (lead.profile_pic_url && lead.profile_pic_url !== 'undefined' && lead.profile_pic_url !== '') return lead.profile_pic_url;
-    if (lead.linkedin_photo && lead.linkedin_photo !== 'undefined' && lead.linkedin_photo !== '') return lead.linkedin_photo;
-    if (lead.avatar_url && lead.avatar_url !== 'undefined' && lead.avatar_url !== '') return lead.avatar_url;
-    if (lead.picture_url && lead.picture_url !== 'undefined' && lead.picture_url !== '') return lead.picture_url;
-    return undefined;
-  };
-
-  const majorTimezones = [
-    { value: 'UTC', label: 'UTC (Coordinated Universal Time)' },
-    { value: 'America/New_York', label: 'Eastern Time (New York)' },
-    { value: 'America/Chicago', label: 'Central Time (Chicago)' },
-    { value: 'America/Denver', label: 'Mountain Time (Denver)' },
-    { value: 'America/Los_Angeles', label: 'Pacific Time (Los Angeles)' },
-    { value: 'Europe/London', label: 'GMT (London)' },
-    { value: 'Europe/Paris', label: 'CET (Paris)' },
-    { value: 'Europe/Moscow', label: 'MSK (Moscow)' },
-    { value: 'Asia/Dubai', label: 'GST (Dubai)' },
-    { value: 'Asia/Kolkata', label: 'IST (India)' },
-    { value: 'Asia/Shanghai', label: 'CST (China)' },
-    { value: 'Asia/Tokyo', label: 'JST (Japan)' },
-    { value: 'Australia/Sydney', label: 'AEDT (Sydney)' },
-  ];
-
-  const handleIntervalTypeChange = (type: 'daily' | 'specific' | 'exclude-weekends') => {
-    onEmailDataChange('intervalType', type);
-    if (type !== 'specific') {
-      onEmailDataChange('selectedDays', []);
-    }
-  };
-
-  const handleDayToggle = (day: string) => {
-    const currentDays = emailData.selectedDays || [];
-    const updatedDays = currentDays.includes(day)
-      ? currentDays.filter(d => d !== day)
-      : [...currentDays, day];
-    onEmailDataChange('selectedDays', updatedDays);
-  };
 
   const isFormValid = () => {
-    const basicFieldsValid = selectedProspects.length > 0 && emailData.subject.trim() && emailData.body.trim();
-    const intervalValid = !emailData.includeScheduling || 
-      emailData.intervalType !== 'specific' || 
-      (emailData.selectedDays && emailData.selectedDays.length > 0);
-    return basicFieldsValid && intervalValid;
+    return emailData.subject.trim() && emailData.body.trim();
   };
 
-  const handleSchedulingToggle = (isOpen: boolean) => {
-    setShowAdvanced(isOpen);
-    if (isOpen) {
-      // Auto-scroll to show the scheduling options after a short delay
-      setTimeout(() => {
-        const schedulingElement = document.querySelector('[data-scheduling-section]');
-        if (schedulingElement) {
-          schedulingElement.scrollIntoView({ 
-            behavior: 'smooth', 
-            block: 'nearest',
-            inline: 'nearest'
-          });
-        }
-      }, 200);
-    }
-  };
 
   const handleRefineEmail = async () => {
     if (!emailData.subject.trim() || !emailData.body.trim() || !refinementInstructions.trim()) {
@@ -422,7 +176,7 @@ const EmailComposePanel = ({
               </div>
               <div>
                 <h2 className="text-lg font-semibold text-gray-800">
-                  Compose & Send Email
+                  Compose & Save Email
                 </h2>
                 <p className="text-sm text-gray-500">
                   {currentSection?.name?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'Email Section'}
@@ -433,163 +187,6 @@ const EmailComposePanel = ({
         </div>
 
       <div className="p-6 space-y-6 bg-gradient-to-br from-gray-50 to-white shadow-inner max-h-[85vh] overflow-y-auto">
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <Label className="text-sm font-semibold text-gray-900 flex items-center gap-2">
-              <Users className="w-4 h-4" />
-              Select Prospects *
-            </Label>
-            {selectedProspects.length > 0 && (
-              <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
-                {selectedProspects.length} selected
-              </span>
-            )}
-          </div>
-
-          {/* Selected Prospect Tags */}
-          {selectedProspects.length > 0 && (
-            <div className="space-y-2">
-              <p className="text-xs font-medium text-gray-600">Selected Recipients:</p>
-              <div className="flex flex-wrap gap-2 max-h-24 overflow-y-auto">
-                {selectedProspects.map((email) => (
-                  <Badge key={email} variant="secondary" className="flex items-center gap-1 bg-gray-50 text-gray-700 border border-gray-200 hover:bg-gray-100">
-                    <span className="text-xs truncate max-w-[150px]">{email}</span>
-                    <X 
-                      className="w-3 h-3 cursor-pointer text-gray-400 hover:text-red-600 transition-colors" 
-                      onClick={() => removeSelectedProspect(email)}
-                    />
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {isLoadingProspects ? (
-            <div className="text-center py-8">
-              <Loader2 className="w-6 h-6 animate-spin mx-auto text-gray-400" />
-              <p className="text-sm text-gray-500 mt-2">Loading prospects...</p>
-            </div>
-          ) : prospectsLists.length === 0 ? (
-            <div className="text-center py-8 bg-gray-50 rounded-lg border border-gray-200">
-              <Users className="w-12 h-12 mx-auto text-gray-300 mb-3" />
-              <p className="text-sm text-gray-500">No prospect lists available</p>
-              <p className="text-xs text-gray-400 mt-1">Create some prospect lists first</p>
-            </div>
-          ) : (
-            <div 
-              className="space-y-2 max-h-64 overflow-y-auto border border-gray-200 rounded-lg p-3 bg-white"
-              style={{ maxHeight: '16rem' }} // Approximately 4 items
-            >
-              {prospectsLists.map(list => {
-                const isExpanded = expandedLists.has(list.list_id);
-                const listProspectsCount = list.prospects?.length || 0;
-                const selectionState = getListSelectionState(list);
-                
-                return (
-                  <div key={list.list_id} className="space-y-1" data-list-id={list.list_id}>
-                    <div className={`relative cursor-pointer px-3 py-2 rounded-lg border transition-all duration-200 ${
-                      selectionState === 'all' 
-                        ? 'bg-gray-900 border-gray-900 text-white shadow-md'
-                        : selectionState === 'partial'
-                        ? 'bg-gray-600 border-gray-600 text-white shadow-md'
-                        : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300 hover:shadow-sm'
-                    }`}>
-                      <div className="flex items-center justify-between">
-                        <div 
-                          onClick={() => handleListToggle(list.list_id)}
-                          className="flex items-center gap-2 flex-1 min-w-0"
-                        >
-                          <Users className="w-4 h-4 flex-shrink-0" />
-                          <div className="min-w-0 flex-1">
-                            <span className="font-medium text-sm truncate block">{list.list_name}</span>
-                            {list.description && (
-                              <p className="text-xs opacity-75 truncate">{list.description}</p>
-                            )}
-                          </div>
-                        </div>
-                        
-                        <div className="flex items-center gap-2 flex-shrink-0">
-                          <button
-                            onClick={(e) => handleListSelect(list.list_id, e)}
-                            className={`text-xs px-2 py-1 rounded-full transition-colors ${
-                              selectionState === 'all' 
-                                ? 'bg-white/20 text-white hover:bg-white/30'
-                                : selectionState === 'partial'
-                                ? 'bg-white/20 text-white hover:bg-white/30'
-                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                            }`}
-                          >
-                            {selectionState === 'all' 
-                              ? '✓ All Selected' 
-                              : selectionState === 'partial' 
-                              ? `${selectedProspects.filter(email => list.prospects.map(p => getLeadDisplayEmail(p)).includes(email)).length}/${listProspectsCount} Selected`
-                              : `Select All (${listProspectsCount})`
-                            }
-                          </button>
-                          <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${
-                            isExpanded ? 'rotate-180' : ''
-                          }`} />
-                        </div>
-                      </div>
-                    </div>
-
-                    {isExpanded && listProspectsCount > 0 && (
-                      <div className="ml-4 space-y-1 border-l-2 border-gray-100 pl-2">
-                        {list.prospects.map((prospect, index) => {
-                          const email = getLeadDisplayEmail(prospect);
-                          const name = getLeadDisplayName(prospect);
-                          const photo = getLeadPhoto(prospect);
-                          const isSelected = selectedProspects.includes(email);
-                          
-                          return (
-                            <div
-                              key={`${list.list_id}-${index}`}
-                              onClick={() => email !== 'No email' && handleProspectToggle(email)}
-                              className={`relative cursor-pointer px-3 py-2 rounded-md border transition-all duration-200 ${
-                                email === 'No email' 
-                                  ? 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed'
-                                  : isSelected
-                                  ? 'bg-gray-900 border-gray-900 text-white shadow-md'
-                                  : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300 hover:shadow-sm'
-                              }`}
-                            >
-                              <div className="flex items-center gap-2">
-                                {photo ? (
-                                  <img 
-                                    src={photo} 
-                                    alt={name}
-                                    className="w-6 h-6 rounded-full object-cover flex-shrink-0 border border-gray-200"
-                                    onError={(e) => {
-                                      e.currentTarget.style.display = 'none';
-                                      e.currentTarget.nextElementSibling!.style.display = 'flex';
-                                    }}
-                                  />
-                                ) : null}
-                                <div className={`w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0 ${photo ? 'hidden' : 'flex'}`}>
-                                  <User className="w-3 h-3 text-gray-500" />
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                  <span className="font-medium text-xs truncate block">{name}</span>
-                                  <p className="text-xs opacity-75 truncate">{email}</p>
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-
-                    {isExpanded && listProspectsCount === 0 && (
-                      <div className="ml-4 text-center py-3 text-gray-400 text-xs border-l-2 border-gray-100 pl-2">
-                        No prospects in this list
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
@@ -919,95 +516,20 @@ const EmailComposePanel = ({
           </div>
         </div>
 
-        <Collapsible open={showAdvanced} onOpenChange={handleSchedulingToggle} data-scheduling-section>
-          <CollapsibleTrigger asChild>
-            <Button
-              variant="outline"
-              className="w-full flex items-center justify-between"
-              type="button"
-            >
-              <div className="flex items-center">
-                <Clock className="w-4 h-4 mr-2" />
-                Advanced Scheduling
-              </div>
-              <ChevronDown className={`w-4 h-4 transition-transform ${showAdvanced ? 'rotate-180' : ''}`} />
-            </Button>
-          </CollapsibleTrigger>
-          
-          <CollapsibleContent className="space-y-4 mt-4 p-4 border rounded-lg bg-gray-50">
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="includeScheduling"
-                checked={emailData.includeScheduling}
-                onCheckedChange={(checked) => onEmailDataChange('includeScheduling', checked as boolean)}
-              />
-              <Label htmlFor="includeScheduling" className="text-sm font-medium text-gray-700">
-                Enable scheduling options
-              </Label>
-            </div>
-
-            {emailData.includeScheduling && (
-              <>
-                <div className="border-t pt-4">
-                  <EmailInterval
-                    intervalType={emailData.intervalType || 'daily'}
-                    selectedDays={emailData.selectedDays || []}
-                    onIntervalTypeChange={handleIntervalTypeChange}
-                    onDayToggle={handleDayToggle}
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="time" className="text-sm font-semibold text-gray-900">
-                      Send Time (24-hour format)
-                    </Label>
-                    <Input
-                      id="time"
-                      type="time"
-                      value={emailData.time || '09:00'}
-                      onChange={(e) => onEmailDataChange('time', e.target.value)}
-                      className={`w-full shadow-sm transition-colors duration-200 ${
-                        emailData.time && emailData.time !== '09:00'
-                          ? 'bg-[#E8F0FE] border-[#E8F0FE] focus:border-[#E8F0FE] focus:ring-[#E8F0FE]' 
-                          : 'bg-white border-gray-300 focus:border-gray-900 focus:ring-gray-900'
-                      }`}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="timezone" className="text-sm font-semibold text-gray-900">
-                      Timezone
-                    </Label>
-                    <Select
-                      value={emailData.timezone || 'UTC'}
-                      onValueChange={(value) => onEmailDataChange('timezone', value)}
-                    >
-                      <SelectTrigger className={`shadow-sm transition-colors duration-200 ${
-                        emailData.timezone && emailData.timezone !== 'UTC'
-                          ? 'bg-[#E8F0FE] border-[#E8F0FE] focus:border-[#E8F0FE] focus:ring-[#E8F0FE]' 
-                          : 'bg-white border-gray-300 focus:border-gray-900 focus:ring-gray-900'
-                      }`}>
-                        <SelectValue placeholder="Select timezone" />
-                      </SelectTrigger>
-                      <SelectContent className="max-h-60">
-                        {majorTimezones.map((tz) => (
-                          <SelectItem key={tz.value} value={tz.value}>
-                            {tz.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </>
-            )}
-          </CollapsibleContent>
-        </Collapsible>
       </div>
 
         <div className="px-6 py-4 border-t border-gray-100 bg-gradient-to-r from-gray-50 to-white flex justify-between items-center rounded-b-xl">
           <div className="flex items-center gap-3">
+            {onBackToLists && (
+              <Button
+                onClick={onBackToLists}
+                variant="outline"
+                className="bg-white hover:bg-gray-50 border-gray-200 shadow-sm hover:shadow-md transition-all duration-200 text-gray-600 hover:text-gray-800"
+              >
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back to Lists
+              </Button>
+            )}
             <Button
               onClick={onGenerateEmail}
               variant="outline"
@@ -1020,19 +542,19 @@ const EmailComposePanel = ({
           
           <div className="flex space-x-3">
             <Button
-              onClick={onSendEmail}
-              disabled={isSending || !isFormValid()}
-              className="bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-700 hover:to-gray-800 text-white shadow-md hover:shadow-lg transition-all duration-300 font-medium px-6 py-2"
+              onClick={() => onSaveEmail(sessionId, templateId)}
+              disabled={isSaving || !isFormValid()}
+              className="bg-gradient-to-r from-gray-900 to-gray-800 hover:from-gray-800 hover:to-gray-700 text-white shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-1 ring-2 ring-gray-500/20 hover:ring-gray-400/40 font-medium px-6 py-2"
             >
-              {isSending ? (
+              {isSaving ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Sending...
+                  Saving...
                 </>
               ) : (
                 <>
-                  <Send className="w-4 h-4 mr-2" />
-                  Send Email
+                  <Save className="w-4 h-4 mr-2" />
+                  Save Email
                 </>
               )}
             </Button>
