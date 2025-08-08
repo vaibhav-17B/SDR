@@ -20,7 +20,7 @@ from base_models import (
     GmailAuthRequest, AuthStatusResponse, UserInfo,
     # Email models
     EmailSendRequest, EmailSendResponse, EmailGenerationParams, EmailGenerationResponse, 
-    MultipleEmailGenerationResponse, EmailContent,
+    MultipleEmailGenerationResponse, EmailContent, RefineEmailRequest,
     # User management models
     UserData, UserRegistrationResponse, UserProfileUpdateRequest, UserProfileUpdateResponse,
     UserDeleteResponse, UserStats, UserStatsResponse,
@@ -43,7 +43,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from csv_database import CSVUserDatabase
 from search_history_manager import SearchHistoryManager
 from prospects_list_manager import ProspectsListManager
-from studio import generate_multiple_emails
+from studio import generate_multiple_emails, refine_email_content
 
 
 app = FastAPI()
@@ -60,7 +60,7 @@ scheduler.start()
 
 ALLOWED_ORIGINS = [
     "https://preview--quick-mail-craft.lovable.app",
-    "https://8fee1d837bd6.ngrok-free.app",  
+    "https://83152ddb1df0.ngrok-free.app",  
     "http://localhost:8080",                          
 ]
 
@@ -98,7 +98,7 @@ TOKENS_FOLDER = 'tokens'
 os.makedirs(TOKENS_FOLDER, exist_ok=True)
 
 # Add environment variable or configuration
-REDIRECT_BASE_URL = os.getenv("REDIRECT_BASE_URL", "https://8fee1d837bd6.ngrok-free.app")
+REDIRECT_BASE_URL = os.getenv("REDIRECT_BASE_URL", "https://83152ddb1df0.ngrok-free.app")
 print(f"REDIRECT_BASE_URL: {REDIRECT_BASE_URL}\n")
 
 
@@ -647,6 +647,30 @@ async def generate_email(request: EmailGenerationParams):
         print(f"[ERROR] Failed to generate emails: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to generate emails: {str(e)}")
 
+
+@app.post("/api/refine-email", response_model=EmailGenerationResponse)
+async def refine_email(request: RefineEmailRequest):
+    """Refine email content based on user instructions"""
+    print(f"REFINE EMAIL PARAMS: Original Subject: {request.original_subject[:50]}...")
+    print(f"Refinement Instructions: {request.refinement_instructions}")
+    
+    try:
+        print(f"[DEBUG] Starting email refinement")
+        
+        # Refine email using studio.py
+        refined_email = await refine_email_content(request)
+        
+        print(f"[DEBUG] Successfully refined email")
+        
+        return EmailGenerationResponse(
+            subject=refined_email.subject,
+            body=refined_email.body,
+            success=True
+        )
+        
+    except Exception as e:
+        print(f"[ERROR] Failed to refine email: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to refine email: {str(e)}")
 
 
 @app.post("/api/send-email")

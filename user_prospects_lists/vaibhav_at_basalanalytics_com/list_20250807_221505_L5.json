@@ -1,0 +1,134 @@
+{
+  "list_id": "list_20250807_221505",
+  "list_name": "L5",
+  "description": "!!!",
+  "prospects": [
+    {
+      "personal_information": {
+        "full_name": "Edward Igushev",
+        "first_name": "Edward",
+        "last_name": "Igushev",
+        "linkedin_url": "https://www.linkedin.com/in/edward-igushev-583b2b34",
+        "professional_headline": "Co-Founder & CTO at Created by Humans | Co-Founder & CEO at TrueSource (acq) | ex-Google | Let's automate the world!",
+        "professional_summary": "LinkedIn: www.linkedin.com/in/igushevAngelList: https://angel.co/igushevGitHub:",
+        "primary_professional_email": "eigushev@createdbyhumans.ai",
+        "picture_url": "https://media.licdn.com/dms/image/v2/D5603AQGCqDJJH3GLrw/profile-displayphoto-shrink_200_200/profile-displayphoto-shrink_200_200/0/1719353831570?e=2147483647&v=beta&t=fyuDK9erXWOW9-Xj1Vfo9Eq8tkTultadQHxGambNeiM",
+        "location": {
+          "full_location": "San Francisco Bay Area",
+          "country": "United States",
+          "regions": [
+            "Americas",
+            "Northern America",
+            "AMER"
+          ]
+        }
+      },
+      "contact_information": {
+        "primary_email": "eigushev@createdbyhumans.ai"
+      },
+      "current_position": {
+        "title": "Co-founder CTO",
+        "description": "Created by Humans is an AI Rights licensing platform that connects copyright holders and AI companies. The platform will provide a simple way for rights holders to license their works to AI companies and for AI companies to access the highest quality content for their models in a legally-sound way.",
+        "department": "C-Suite",
+        "management_level": "Founder",
+        "is_decision_maker": 1,
+        "total_experience_months": 193,
+        "total_experience_years": 16,
+        "total_experience_remaining_months": 1
+      },
+      "work_experience": [
+        {
+          "position_title": "Co-founder CTO",
+          "company_name": "Created by Humans",
+          "company_industry": "Technology, Information and Internet",
+          "company_size": "1-10 employees",
+          "location": "San Francisco Bay Area",
+          "duration": "January 2024 - None",
+          "duration_months": 17,
+          "department": "C-Suite",
+          "management_level": "Founder",
+          "is_current": true
+        },
+        {
+          "position_title": "Co-founder CEO",
+          "company_name": "TrueSource",
+          "company_industry": "Data Infrastructure and Analytics",
+          "company_size": "1-10 employees",
+          "location": "San Francisco Bay Area",
+          "duration": "November 2020 - January 2023",
+          "duration_months": 26,
+          "department": "C-Suite",
+          "management_level": "Founder",
+          "is_current": false
+        },
+        {
+          "position_title": "Founding Software Engineer",
+          "company_name": "Glean",
+          "company_industry": "Software Development",
+          "company_size": "501-1000 employees",
+          "location": "San Francisco Bay Area",
+          "duration": "April 2019 - November 2020",
+          "duration_months": 19,
+          "department": "Engineering and Technical",
+          "management_level": "Founder",
+          "is_current": false
+        }
+      ],
+      "skills_and_expertise": {
+        "inferred_skills": [
+          "machine learning",
+          "human resources",
+          "licensing",
+          "software",
+          "facebook",
+          "engineers",
+          "infrastructure",
+          "components",
+          "analyses",
+          "fashion",
+          "equities",
+          "management",
+          "gems",
+          "trading",
+          "server",
+          "accounting",
+          "hr",
+          "reporting",
+          "kernel",
+          "b2b",
+          "selling",
+          "sales",
+          "investors",
+          "capital",
+          "microsoft",
+          "less"
+        ]
+      },
+      "educational_background": [
+        {
+          "degree": "Master's degree Computer Science",
+          "institution": "Bauman Moscow State Technical University",
+          "location": "5, 2-nd Baumanskaya street; Moscow, 105005, RU",
+          "duration": "2007 - 2009"
+        },
+        {
+          "degree": "Bachelor's degree, Computer Science, 3.96/4.0",
+          "institution": "Bauman Moscow State Technical University",
+          "location": "5, 2-nd Baumanskaya street; Moscow, 105005, RU",
+          "duration": "2003 - 2007"
+        },
+        {
+          "degree": "Master's degree, Computer Science, 4.0/4.0",
+          "institution": "Bauman Moscow State Technical University",
+          "location": "5, 2-nd Baumanskaya street; Moscow, 105005, RU",
+          "duration": "2007 - 2009"
+        }
+      ],
+      "profile_index": 3
+    }
+  ],
+  "total_count": 1,
+  "created_timestamp": "2025-08-07T22:15:05.549732",
+  "tags": [],
+  "last_updated": "2025-08-08T00:34:06.286267"
+}

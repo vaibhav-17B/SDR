@@ -6,7 +6,8 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Mail, Send, Loader2, ChevronDown, Clock, Users, User, Sparkles, Bold, Italic, Underline, List, Link, Type, AlignLeft, AlignCenter, AlignRight, Code, Quote } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Mail, Send, Loader2, ChevronDown, Clock, Users, User, Sparkles, Bold, Italic, Underline, List, Link, Type, AlignLeft, AlignCenter, AlignRight, Code, Quote, X, Wand2 } from 'lucide-react';
 import EmailInterval from './EmailInterval';
 import { API_CONFIG } from '@/config/api';
 import { getSessionId } from '@/utils/session';
@@ -82,6 +83,9 @@ const EmailComposePanel = ({
   const [isLoadingProspects, setIsLoadingProspects] = useState(false);
   const [expandedLists, setExpandedLists] = useState<Set<string>>(new Set());
   const [showFormattingTools, setShowFormattingTools] = useState(false);
+  const [showRefineSection, setShowRefineSection] = useState(false);
+  const [refinementInstructions, setRefinementInstructions] = useState('');
+  const [isRefining, setIsRefining] = useState(false);
 
   const currentSection = emailSections.find(section => section.id === activeSection);
   const emailData = currentSection?.emailData || {
@@ -140,6 +144,17 @@ const EmailComposePanel = ({
       newExpanded.delete(listId);
     } else {
       newExpanded.add(listId);
+      // Auto-scroll to show expanded prospects after a short delay
+      setTimeout(() => {
+        const expandedElement = document.querySelector(`[data-list-id="${listId}"]`);
+        if (expandedElement) {
+          expandedElement.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'nearest',
+            inline: 'nearest'
+          });
+        }
+      }, 100);
     }
     setExpandedLists(newExpanded);
   };
@@ -172,6 +187,12 @@ const EmailComposePanel = ({
       ? selectedProspects.filter(email => email !== prospectEmail)
       : [...selectedProspects, prospectEmail];
     
+    setSelectedProspects(newSelected);
+    onEmailDataChange('to', newSelected.join(', '));
+  };
+
+  const removeSelectedProspect = (emailToRemove: string) => {
+    const newSelected = selectedProspects.filter(email => email !== emailToRemove);
     setSelectedProspects(newSelected);
     onEmailDataChange('to', newSelected.join(', '));
   };
@@ -287,6 +308,79 @@ const EmailComposePanel = ({
     return basicFieldsValid && intervalValid;
   };
 
+  const handleSchedulingToggle = (isOpen: boolean) => {
+    setShowAdvanced(isOpen);
+    if (isOpen) {
+      // Auto-scroll to show the scheduling options after a short delay
+      setTimeout(() => {
+        const schedulingElement = document.querySelector('[data-scheduling-section]');
+        if (schedulingElement) {
+          schedulingElement.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'nearest',
+            inline: 'nearest'
+          });
+        }
+      }, 200);
+    }
+  };
+
+  const handleRefineEmail = async () => {
+    if (!emailData.subject.trim() || !emailData.body.trim() || !refinementInstructions.trim()) {
+      toast.error('Please provide subject, body, and refinement instructions');
+      return;
+    }
+
+    setIsRefining(true);
+    try {
+      const sessionId = getSessionId();
+      if (!sessionId) {
+        toast.error('Session not found. Please refresh and try again.');
+        return;
+      }
+
+      const response = await fetch(`${API_CONFIG.BASE_URL}/api/refine-email`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'ngrok-skip-browser-warning': 'true',
+          'X-Session-ID': sessionId
+        },
+        body: JSON.stringify({
+          original_subject: emailData.subject,
+          original_body: emailData.body,
+          refinement_instructions: refinementInstructions,
+          mail_type: currentSection?.name || 'email',
+          tone: 'Professional'
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ detail: 'Unknown error occurred' }));
+        throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      if (data.success) {
+        // Update the email data with refined content
+        onEmailDataChange('subject', data.subject);
+        onEmailDataChange('body', data.body);
+        
+        toast.success('Email refined successfully!');
+        setRefinementInstructions('');
+        setShowRefineSection(false);
+      } else {
+        throw new Error('Failed to refine email');
+      }
+    } catch (error) {
+      console.error('Error refining email:', error);
+      toast.error(`Failed to refine email: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsRefining(false);
+    }
+  };
+
   if (!hasGeneratedContent) {
     return (
       <div className="space-y-6 shadow-xl hover:shadow-2xl transition-shadow duration-500 rounded-lg p-6 bg-gradient-to-br from-white to-gray-50">
@@ -338,7 +432,7 @@ const EmailComposePanel = ({
           </div>
         </div>
 
-      <div className="p-6 space-y-6 bg-gradient-to-br from-gray-50 to-white shadow-inner max-h-[80vh] overflow-y-auto">
+      <div className="p-6 space-y-6 bg-gradient-to-br from-gray-50 to-white shadow-inner max-h-[85vh] overflow-y-auto">
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <Label className="text-sm font-semibold text-gray-900 flex items-center gap-2">
@@ -352,6 +446,24 @@ const EmailComposePanel = ({
             )}
           </div>
 
+          {/* Selected Prospect Tags */}
+          {selectedProspects.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-gray-600">Selected Recipients:</p>
+              <div className="flex flex-wrap gap-2 max-h-24 overflow-y-auto">
+                {selectedProspects.map((email) => (
+                  <Badge key={email} variant="secondary" className="flex items-center gap-1 bg-gray-50 text-gray-700 border border-gray-200 hover:bg-gray-100">
+                    <span className="text-xs truncate max-w-[150px]">{email}</span>
+                    <X 
+                      className="w-3 h-3 cursor-pointer text-gray-400 hover:text-red-600 transition-colors" 
+                      onClick={() => removeSelectedProspect(email)}
+                    />
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+
           {isLoadingProspects ? (
             <div className="text-center py-8">
               <Loader2 className="w-6 h-6 animate-spin mx-auto text-gray-400" />
@@ -364,20 +476,23 @@ const EmailComposePanel = ({
               <p className="text-xs text-gray-400 mt-1">Create some prospect lists first</p>
             </div>
           ) : (
-            <div className="space-y-2 max-h-80 overflow-y-auto border border-gray-200 rounded-lg p-2 bg-white">
+            <div 
+              className="space-y-2 max-h-64 overflow-y-auto border border-gray-200 rounded-lg p-3 bg-white"
+              style={{ maxHeight: '16rem' }} // Approximately 4 items
+            >
               {prospectsLists.map(list => {
                 const isExpanded = expandedLists.has(list.list_id);
                 const listProspectsCount = list.prospects?.length || 0;
                 const selectionState = getListSelectionState(list);
                 
                 return (
-                  <div key={list.list_id} className="space-y-1">
+                  <div key={list.list_id} className="space-y-1" data-list-id={list.list_id}>
                     <div className={`relative cursor-pointer px-3 py-2 rounded-lg border transition-all duration-200 ${
                       selectionState === 'all' 
                         ? 'bg-gray-900 border-gray-900 text-white shadow-md'
                         : selectionState === 'partial'
-                        ? 'bg-gray-400 border-gray-400 text-white shadow-md'
-                        : 'bg-white border-gray-200 text-gray-700 shadow-sm hover:shadow-md hover:border-gray-300'
+                        ? 'bg-gray-600 border-gray-600 text-white shadow-md'
+                        : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300 hover:shadow-sm'
                     }`}>
                       <div className="flex items-center justify-between">
                         <div 
@@ -430,12 +545,12 @@ const EmailComposePanel = ({
                             <div
                               key={`${list.list_id}-${index}`}
                               onClick={() => email !== 'No email' && handleProspectToggle(email)}
-                              className={`relative cursor-pointer px-2 py-2 rounded-md border transition-all duration-200 ${
+                              className={`relative cursor-pointer px-3 py-2 rounded-md border transition-all duration-200 ${
                                 email === 'No email' 
                                   ? 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed'
                                   : isSelected
                                   ? 'bg-gray-900 border-gray-900 text-white shadow-md'
-                                  : 'bg-white border-gray-200 text-gray-700 hover:shadow-sm hover:border-gray-300'
+                                  : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300 hover:shadow-sm'
                               }`}
                             >
                               <div className="flex items-center gap-2">
@@ -510,20 +625,99 @@ const EmailComposePanel = ({
           </div>
         </div>
 
-        <div className="space-y-2">
+        <div className="space-y-3">
           <Label htmlFor="subject" className="text-sm font-semibold text-gray-900">Subject *</Label>
           <Input
             id="subject"
             placeholder="Enter email subject"
             value={emailData.subject}
             onChange={(e) => onEmailDataChange('subject', e.target.value)}
-            className={`w-full shadow-sm transition-colors duration-200 ${
+            className={`w-full h-12 text-base px-4 py-3 shadow-sm transition-colors duration-200 ${
               emailData.subject.trim() 
                 ? 'bg-[#E8F0FE] border-[#E8F0FE] focus:border-[#E8F0FE] focus:ring-[#E8F0FE]' 
                 : 'bg-white border-gray-300 focus:border-gray-900 focus:ring-gray-900'
             }`}
           />
         </div>
+
+        {/* Refine Email Section */}
+        {hasGeneratedContent && (emailData.subject.trim() || emailData.body.trim()) && (
+          <div className="space-y-3 p-4 border border-gray-200 rounded-lg bg-gradient-to-r from-purple-50 to-blue-50">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Wand2 className="w-4 h-4 text-purple-600" />
+                <Label className="text-sm font-semibold text-gray-900">
+                  Refine Email Content
+                </Label>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowRefineSection(!showRefineSection)}
+                className="text-xs px-3 py-1 h-7 text-purple-600 hover:text-purple-800 hover:bg-purple-100"
+              >
+                {showRefineSection ? 'Hide' : 'Show'} Refine Options
+              </Button>
+            </div>
+            
+            {showRefineSection && (
+              <div className="space-y-3 pt-2 border-t border-purple-200">
+                <div className="space-y-2">
+                  <Label htmlFor="refinement-instructions" className="text-sm font-medium text-gray-700">
+                    Describe how you'd like to improve the email:
+                  </Label>
+                  <Textarea
+                    id="refinement-instructions"
+                    placeholder="e.g., Make it more casual, add urgency, focus on benefits, make it shorter..."
+                    value={refinementInstructions}
+                    onChange={(e) => setRefinementInstructions(e.target.value)}
+                    className="w-full min-h-[80px] text-sm bg-white border-purple-200 focus:border-purple-400 focus:ring-purple-400"
+                    rows={3}
+                  />
+                </div>
+                
+                <div className="flex gap-2">
+                  <Button
+                    onClick={handleRefineEmail}
+                    disabled={isRefining || !refinementInstructions.trim() || !emailData.subject.trim() || !emailData.body.trim()}
+                    className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white shadow-md hover:shadow-lg transition-all duration-300 text-sm px-4 py-2"
+                  >
+                    {isRefining ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Refining...
+                      </>
+                    ) : (
+                      <>
+                        <Wand2 className="w-4 h-4 mr-2" />
+                        Refine Email
+                      </>
+                    )}
+                  </Button>
+                  
+                  {refinementInstructions.trim() && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setRefinementInstructions('');
+                      }}
+                      className="text-sm px-3 py-2 border-purple-200 text-purple-600 hover:bg-purple-50"
+                    >
+                      Clear
+                    </Button>
+                  )}
+                </div>
+                
+                <div className="text-xs text-gray-600 bg-white/50 p-2 rounded border border-purple-100">
+                  <strong>Tips:</strong> Be specific about changes you want (tone, length, focus, etc.). 
+                  The AI will maintain your original message while applying your improvements.
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="space-y-3">
           <div className="flex items-center justify-between">
@@ -702,7 +896,7 @@ const EmailComposePanel = ({
               </div>
               
               <div className="text-xs text-gray-500 bg-white p-2 rounded border">
-                <strong>Quick Tips:</strong> Use **bold**, *italic*, [link](URL), > quote, • bullet points
+                <strong>Quick Tips:</strong> Use **bold**, *italic*, [link](URL), &gt; quote, • bullet points
               </div>
             </div>
           )}
@@ -712,7 +906,7 @@ const EmailComposePanel = ({
             placeholder="Enter your message here... Use the formatting tools above to enhance your email."
             value={emailData.body}
             onChange={(e) => onEmailDataChange('body', e.target.value)}
-            className={`w-full min-h-[250px] resize-y font-sans text-sm leading-relaxed shadow-sm transition-colors duration-200 ${
+            className={`w-full min-h-[350px] resize-y font-sans text-base leading-relaxed shadow-sm transition-colors duration-200 ${
               emailData.body.trim() 
                 ? 'bg-[#E8F0FE] border-[#E8F0FE] focus:border-[#E8F0FE] focus:ring-[#E8F0FE]' 
                 : 'bg-white border-gray-300 focus:border-gray-900 focus:ring-gray-900'
@@ -725,7 +919,7 @@ const EmailComposePanel = ({
           </div>
         </div>
 
-        <Collapsible open={showAdvanced} onOpenChange={setShowAdvanced}>
+        <Collapsible open={showAdvanced} onOpenChange={handleSchedulingToggle} data-scheduling-section>
           <CollapsibleTrigger asChild>
             <Button
               variant="outline"

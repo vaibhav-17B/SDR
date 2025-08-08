@@ -7,7 +7,10 @@ from typing import Optional, Dict, List
 from dotenv import load_dotenv
 from openai import AzureOpenAI
 from utils import BASE_PROMPT
-from base_models import EmailContent
+from base_models import EmailContent, RefineEmailRequest
+
+
+
 # Load environment variables
 load_dotenv()
 
@@ -26,13 +29,6 @@ client = AzureOpenAI(
 )
 
 
-# ---------- Pydantic Models ----------
-
-class EmailGenerationParams(BaseModel):
-    mail_types: List[str]
-    description: str
-    tone: str
-    additional_requirements: str
 
     
 # ---------- Dynamic Email Generator ----------
@@ -179,7 +175,81 @@ Example format:
         return error_result
 
 
+async def refine_email_content(request: RefineEmailRequest) -> EmailContent:
+    """
+    Refine the generated email content based on user instructions
+    """
+    
+    system_prompt = """You are an Expert Mail Composer that helps users to refine and polish their emails based on their description and requirements. Your task is to refine the email content based on the provided instructions. Maintain the original message intent, but enhance clarity, professionalism, and engagement based on the refinement instructions."""
+    
+    user_prompt = f"""
+    Refine the following email content based on the provided instructions:
+    
+    Original Subject: {request.original_subject}
+    Original Body: {request.original_body}
+    Mail Type: {request.mail_type or 'Not specified'}
+    Tone: {request.tone or 'Professional'}
+    Refinement Instructions: {request.refinement_instructions}
 
+    Please provide a refined version that:
+    1. Maintains the original intent and message
+    2. Incorporates the refinement instructions
+    3. Ensures clarity, professionalism, and engagement
+    4. Matches the specified tone if provided
+    
+    Return the response in JSON format with "subject" and "body" fields.
+    """
 
+    try:
+        response = client.chat.completions.create(
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            max_tokens=4000,
+            temperature=0.7,
+            top_p=1.0,
+            model=AZURE_OPENAI_DEPLOYMENT,
+            response_format={
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "RefinedEmailResponse",
+                    "strict": True,
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "subject": {"type": "string"},
+                            "body": {"type": "string"}
+                        },
+                        "required": ["subject", "body"],
+                        "additionalProperties": False
+                    }
+                }
+            },
+        )
 
+        content = response.choices[0].message.content
+        print(f"[DEBUG] Email Refinement LLM Response: {content}")
+        
+        try:
+            refined_result = json.loads(content)
+            return EmailContent(
+                subject=refined_result["subject"],
+                body=refined_result["body"]
+            )
+        except json.JSONDecodeError as e:
+            print(f"[ERROR] JSON decode error in refinement: {e}")
+            # Fallback: return original content with note
+            return EmailContent(
+                subject=f"[Refined] {request.original_subject}",
+                body=f"{request.original_body}\n\n[Note: Refinement processing encountered an error, showing original content]"
+            )
+
+    except Exception as e:
+        print(f"[ERROR] Email refinement failed: {str(e)}")
+        # Fallback: return original content with error note
+        return EmailContent(
+            subject=f"[Error in Refinement] {request.original_subject}",
+            body=f"{request.original_body}\n\n[Error: Failed to refine email - {str(e)}]"
+        )
 

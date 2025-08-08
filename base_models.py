@@ -102,6 +102,14 @@ class MultipleEmailGenerationResponse(BaseModel):
     message: str
     generated_emails: Dict[str, EmailContent]  # mail_type -> EmailContent
 
+class RefineEmailRequest(BaseModel):
+    """Request model for refining email content"""
+    original_subject: str
+    original_body: str
+    refinement_instructions: str
+    mail_type: Optional[str] = None
+    tone: Optional[str] = None
+
 # ============ USER MANAGEMENT MODELS ============
 
 class UserData(BaseModel):
