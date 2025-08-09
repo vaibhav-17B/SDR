@@ -86,6 +86,38 @@ class UserManager:
         except Exception:
             return "unknown_domain"
 
+    def cleanup_old_token_files(self, old_session_id: str) -> None:
+        """Delete token files and Redis session associated with the old session ID"""
+        if not old_session_id:
+            return
+            
+        try:
+            # Cleanup Redis session first
+            if self.redis_client:
+                try:
+                    self.redis_client.delete_session_data(old_session_id)
+                    print(f"✅ UserManager: Deleted Redis session: {old_session_id}")
+                except Exception as e:
+                    print(f"❌ UserManager: Failed to delete Redis session {old_session_id}: {e}")
+            
+            # Cleanup token files
+            if os.path.exists(self.tokens_folder):
+                pattern = os.path.join(self.tokens_folder, f"{old_session_id}_*.json")
+                old_token_files = glob.glob(pattern)
+                
+                for token_file in old_token_files:
+                    try:
+                        os.remove(token_file)
+                        print(f"✅ UserManager: Deleted old token file: {os.path.basename(token_file)}")
+                    except Exception as e:
+                        print(f"❌ UserManager: Failed to delete token file {token_file}: {e}")
+                        
+                if old_token_files:
+                    print(f"🧹 UserManager: Cleaned up {len(old_token_files)} old token file(s) for session: {old_session_id}")
+                    
+        except Exception as e:
+            print(f"❌ UserManager: Error during session cleanup: {e}")
+
     def create_message(self, sender: str, to: str, subject: str, message_text: str) -> dict:
         """Create a MIME message for sending through Gmail API"""
         message = MIMEText(message_text)

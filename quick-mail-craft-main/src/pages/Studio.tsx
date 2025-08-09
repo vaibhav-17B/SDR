@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { User, Mail, Briefcase, Building, Sparkles, Target, BarChart3 } from 'lucide-react';
+import { User, Mail, Briefcase, Building, Sparkles, Target, BarChart3, ArrowLeft } from 'lucide-react';
 import EmailComposePanel from '@/components/EmailComposePanel';
 import EmailGenerationDialog from '@/components/EmailGenerationDialog';
 import SecondaryNavbar from '@/components/SecondaryNavbar';
@@ -626,7 +626,7 @@ const Studio = ({ onAuthChange }: StudioProps) => {
       <div className="bg-gray-50 border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <Card className="border-gray-200 hover:shadow-lg transition-shadow">
+            <Card className="border-gray-200 shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all duration-300 cursor-pointer">
               <CardContent className="p-6">
                 <div className="flex items-center space-x-3">
                   <div className="p-2 bg-gray-100 rounded-lg">
@@ -641,7 +641,7 @@ const Studio = ({ onAuthChange }: StudioProps) => {
               </CardContent>
             </Card>
 
-            <Card className="border-gray-200 hover:shadow-lg transition-shadow">
+            <Card className="border-gray-200 shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all duration-300 cursor-pointer">
               <CardContent className="p-6">
                 <div className="flex items-center space-x-3">
                   <div className="p-2 bg-gray-100 rounded-lg">
@@ -656,7 +656,7 @@ const Studio = ({ onAuthChange }: StudioProps) => {
               </CardContent>
             </Card>
 
-            <Card className="border-gray-200 hover:shadow-lg transition-shadow">
+            <Card className="border-gray-200 shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all duration-300 cursor-pointer">
               <CardContent className="p-6">
                 <div className="flex items-center space-x-3">
                   <div className="p-2 bg-gray-100 rounded-lg">
@@ -690,10 +690,10 @@ const Studio = ({ onAuthChange }: StudioProps) => {
                 </div>
                 <Button
                   onClick={handleBackToLists}
-                  variant="outline"
-                  className="bg-white/10 border-white/20 text-white hover:bg-white/20 hover:border-white/30"
+                  className="bg-gradient-to-r from-gray-900 to-gray-800 hover:from-gray-800 hover:to-gray-700 text-white shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-1 ring-2 ring-gray-500/20 hover:ring-gray-400/40 font-medium px-6 py-2"
                 >
-                  ← Back to Lists
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Back to Lists
                 </Button>
               </div>
               <p className="text-gray-200">

@@ -319,12 +319,21 @@ const SearchHistory: React.FC<SearchHistoryProps> = ({ onLoadSearch, onRefreshRe
       <CardHeader className="pb-3 px-6 pt-6">
         <Collapsible open={showHistory} onOpenChange={setShowHistory}>
           <CollapsibleTrigger asChild>
-            <div className="w-full flex justify-between items-center cursor-pointer p-3 rounded-lg hover:bg-gray-50 transition-all duration-200">
-              <CardTitle className="text-lg font-semibold text-gray-900 flex items-center">
-                <History className="w-5 h-5 mr-2 text-gray-600" />
+            <div className={`w-full flex justify-between items-center cursor-pointer p-3 rounded-lg transition-all duration-300 ${
+              showHistory ? 'bg-gray-900 border border-gray-900' : 'hover:bg-slate-100 hover:border-gray-900 border border-gray-200'
+            }`}>
+              <CardTitle className={`text-lg font-semibold flex items-center transition-colors duration-200 ${
+                showHistory ? 'text-white' : 'text-gray-900'
+              }`}>
+                <History className={`w-5 h-5 mr-2 transition-colors duration-200 ${
+                  showHistory ? 'text-gray-200' : 'text-gray-600'
+                }`} />
                 Search History ({searchHistory.length})
               </CardTitle>
-              {showHistory ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              {showHistory ? 
+                <ChevronUp className="w-4 h-4 text-gray-200 transition-colors duration-200" /> : 
+                <ChevronDown className="w-4 h-4 text-gray-600 transition-colors duration-200" />
+              }
             </div>
           </CollapsibleTrigger>
           
@@ -337,20 +346,28 @@ const SearchHistory: React.FC<SearchHistoryProps> = ({ onLoadSearch, onRefreshRe
                 </div>
               ) : (
                 searchHistory.map((historyItem) => (
-                  <div key={historyItem.search_id} className="border border-gray-200 rounded-lg shadow-lg hover:shadow-xl transition-shadow duration-300">
+                  <div key={historyItem.search_id} className={`border rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all duration-300 ${
+                    expandedSearch === historyItem.search_id 
+                      ? 'border-gray-900 bg-gray-900 text-white shadow-xl' 
+                      : 'border-gray-200 hover:border-gray-900 hover:bg-slate-100'
+                  }`}>
                     <Collapsible 
                       open={expandedSearch === historyItem.search_id} 
                       onOpenChange={(open) => setExpandedSearch(open ? historyItem.search_id : null)}
                     >
                       <CollapsibleTrigger asChild>
-                        <div className="p-4 cursor-pointer hover:bg-gray-50 transition-all duration-200 rounded-lg">
+                        <div className="p-4 cursor-pointer transition-all duration-200 rounded-lg">
                           <div className="flex items-center justify-between mb-2">
                             <div className="flex items-center space-x-3">
-                              <div className="flex items-center space-x-2 text-sm text-gray-600">
+                              <div className={`flex items-center space-x-2 text-sm transition-colors duration-200 ${
+                                expandedSearch === historyItem.search_id ? 'text-gray-200' : 'text-gray-600'
+                              }`}>
                                 <Calendar className="w-4 h-4" />
                                 <span>{historyItem.search_date} at {historyItem.search_time}</span>
                               </div>
-                              <div className="flex items-center space-x-2 text-sm text-gray-600">
+                              <div className={`flex items-center space-x-2 text-sm transition-colors duration-200 ${
+                                expandedSearch === historyItem.search_id ? 'text-gray-200' : 'text-gray-600'
+                              }`}>
                                 <Users className="w-4 h-4" />
                                 <span>{historyItem.total_results} results</span>
                               </div>
@@ -363,7 +380,11 @@ const SearchHistory: React.FC<SearchHistoryProps> = ({ onLoadSearch, onRefreshRe
                                   e.stopPropagation();
                                   loadSearch(historyItem);
                                 }}
-                                className="text-xs shadow-md hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+                                className={`text-xs shadow-md hover:shadow-xl transition-all duration-300 transform hover:scale-105 ${
+                                  expandedSearch === historyItem.search_id 
+                                    ? 'bg-white/20 text-white border-white/30 hover:bg-white/30' 
+                                    : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
+                                }`}
                                 disabled={!historyItem.search_params}
                               >
                                 <Search className="w-3 h-3 mr-1" />
@@ -376,7 +397,11 @@ const SearchHistory: React.FC<SearchHistoryProps> = ({ onLoadSearch, onRefreshRe
                                   e.stopPropagation();
                                   handleDeleteClick(historyItem.search_id);
                                 }}
-                                className="text-xs text-red-600 hover:text-red-700 hover:bg-red-50 shadow-md hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+                                className={`text-xs shadow-md hover:shadow-xl transition-all duration-300 transform hover:scale-105 ${
+                                  expandedSearch === historyItem.search_id 
+                                    ? 'text-red-300 hover:text-red-200 bg-red-500/20 border-red-400/30 hover:bg-red-500/30' 
+                                    : 'text-red-600 hover:text-red-700 hover:bg-red-50 border-gray-200'
+                                }`}
                               >
                                 <Trash2 className="w-3 h-3" />
                               </Button>
@@ -384,12 +409,14 @@ const SearchHistory: React.FC<SearchHistoryProps> = ({ onLoadSearch, onRefreshRe
                           </div>
 
                           <div className="flex items-center justify-between">
-                            <span className="text-xs text-gray-600">
+                            <span className={`text-xs transition-colors duration-200 ${
+                              expandedSearch === historyItem.search_id ? 'text-gray-300' : 'text-gray-600'
+                            }`}>
                               Click anywhere to {expandedSearch === historyItem.search_id ? 'hide' : 'show'} search parameters
                             </span>
                             {expandedSearch === historyItem.search_id ? 
-                              <ChevronUp className="w-4 h-4 text-gray-400" /> : 
-                              <ChevronDown className="w-4 h-4 text-gray-400" />
+                              <ChevronUp className="w-4 h-4 text-gray-300 transition-colors duration-200" /> : 
+                              <ChevronDown className="w-4 h-4 text-gray-400 transition-colors duration-200" />
                             }
                           </div>
                         </div>

@@ -36,7 +36,7 @@ from base_models import (
     CreateProspectsListResponse, AddProspectsRequest, AddProspectsResponse,
     ProspectsListByIdResponse, DeleteProspectsListResponse, RemoveProspectResponse,
     # Common models
-    SessionIDRequest, IDOnlyRequest, SuccessResponse, ErrorResponse, LogoutResponse
+    LogoutResponse
 )
 from redis_helper import RedisSessionManager
 from user_manager import UserManager
@@ -49,13 +49,13 @@ from prospects_list_manager import ProspectsListManager
 from mail_lists_manager import MailListsManager
 from studio import generate_multiple_emails, refine_email_content
 
-
+TOKENS_FOLDER="tokens"
 app = FastAPI()
 RedisManager=RedisSessionManager()
 lead_finder=LeadFinder(test=True)
 user_manager=UserManager(redis_client=RedisManager)
 email_sender=email_helper()
-csv_db = CSVUserDatabase()  # Initialize CSV database
+csv_db = CSVUserDatabase(tokens_folder=TOKENS_FOLDER, redis_manager=RedisManager)  # Initialize CSV database
 search_history_manager = SearchHistoryManager()  # Initialize search history manager
 prospects_list_manager = ProspectsListManager()  # Initialize prospects list manager
 mail_lists_manager = MailListsManager()  # Initialize mail lists manager

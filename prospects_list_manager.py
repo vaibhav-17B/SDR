@@ -4,7 +4,6 @@ import csv
 import pandas as pd
 from datetime import datetime
 from typing import Dict, List, Optional, Any
-from pathlib import Path
 
 class ProspectsListManager:
     def __init__(self, base_folder: str = "user_prospects_lists"):

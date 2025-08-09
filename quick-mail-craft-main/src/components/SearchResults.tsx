@@ -493,15 +493,19 @@ const SearchResults = ({ leads, onLeadClick, getLeadDisplayName, getLeadDisplayE
             <div
               key={index}
               onClick={() => onLeadClick(lead)}
-              className="group p-5 border border-gray-100 rounded-xl hover:bg-gradient-to-r hover:from-gray-900 hover:to-gray-800 hover:text-white cursor-pointer transition-all duration-300 shadow-lg hover:shadow-2xl bg-white hover:border-gray-700 transform hover:scale-[1.02] hover:-translate-y-1"
+              className={`group p-5 border rounded-xl cursor-pointer transition-all duration-300 shadow-lg transform hover:scale-[1.02] hover:-translate-y-1 ${
+                selectedLeads.has(index)
+                  ? 'border-gray-900 bg-slate-50 shadow-xl'
+                  : 'border-gray-100 bg-white hover:bg-slate-100 hover:border-gray-900 hover:shadow-xl'
+              }`}
             >
               <div className="flex items-center space-x-4">
                 <div className="flex-shrink-0">
                   <div 
-                    className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all duration-200 mr-3 opacity-60 group-hover:opacity-100 cursor-pointer ${
+                    className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all duration-200 mr-3 cursor-pointer ${
                       selectedLeads.has(index)
-                        ? 'bg-gray-900 border-gray-900 group-hover:bg-white group-hover:border-white opacity-100' 
-                        : 'border-gray-400 group-hover:border-white hover:shadow-sm'
+                        ? 'bg-gray-900 border-gray-900 opacity-100 shadow-md hover:shadow-lg' 
+                        : 'border-gray-400 opacity-60 group-hover:opacity-100 group-hover:border-slate-400 hover:shadow-sm'
                     }`}
                     onClick={(e) => {
                       e.stopPropagation();
@@ -529,12 +533,12 @@ const SearchResults = ({ leads, onLeadClick, getLeadDisplayName, getLeadDisplayE
                 <div className="flex-grow min-w-0">
                   <div className="flex items-center justify-between">
                     <div className="flex-grow min-w-0">
-                      <h3 className="font-bold text-gray-900 group-hover:text-white truncate text-lg">{getLeadDisplayName(lead)}</h3>
-                      <p className="text-sm text-gray-600 group-hover:text-gray-200 truncate font-medium">{getLeadCurrentPosition(lead)}</p>
-                      <p className="text-sm text-gray-500 group-hover:text-gray-300 truncate">{getLeadCurrentCompany(lead)}</p>
+                      <h3 className="font-bold text-gray-900 group-hover:text-slate-900 truncate text-lg">{getLeadDisplayName(lead)}</h3>
+                      <p className="text-sm text-gray-600 group-hover:text-slate-700 truncate font-medium">{getLeadCurrentPosition(lead)}</p>
+                      <p className="text-sm text-gray-500 group-hover:text-slate-600 truncate">{getLeadCurrentCompany(lead)}</p>
                       <div className="flex items-center space-x-1 mt-2">
-                        <Mail className="w-3 h-3 text-gray-400 group-hover:text-gray-300" />
-                        <span className="text-xs text-gray-500 group-hover:text-gray-300 truncate">{getLeadDisplayEmail(lead)}</span>
+                        <Mail className="w-3 h-3 text-gray-400 group-hover:text-slate-500" />
+                        <span className="text-xs text-gray-500 group-hover:text-slate-600 truncate">{getLeadDisplayEmail(lead)}</span>
                       </div>
                     </div>
                     <div className="flex-shrink-0 ml-4 flex items-center space-x-2">
@@ -543,9 +547,9 @@ const SearchResults = ({ leads, onLeadClick, getLeadDisplayName, getLeadDisplayE
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 data-[state=open]:opacity-100 transition-opacity bg-white/20 hover:bg-white/30 border border-white/20"
+                            className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 data-[state=open]:opacity-100 transition-opacity bg-slate-200/50 hover:bg-slate-300/70 border border-slate-300/30"
                           >
-                            <MoreVertical className="w-4 h-4 text-white" />
+                            <MoreVertical className="w-4 h-4 text-gray-600 group-hover:text-gray-900" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-48">
@@ -594,8 +598,8 @@ const SearchResults = ({ leads, onLeadClick, getLeadDisplayName, getLeadDisplayE
                           )}
                         </DropdownMenuContent>
                       </DropdownMenu>
-                      <div className="w-8 h-8 bg-gray-100 group-hover:bg-white/20 rounded-full flex items-center justify-center transition-all duration-300">
-                        <ChevronDown className="w-4 h-4 text-gray-400 group-hover:text-white rotate-[-90deg]" />
+                      <div className="w-8 h-8 bg-gray-100 group-hover:bg-slate-200 rounded-full flex items-center justify-center transition-all duration-300">
+                        <ChevronDown className="w-4 h-4 text-gray-400 group-hover:text-gray-900 rotate-[-90deg]" />
                       </div>
                     </div>
                   </div>

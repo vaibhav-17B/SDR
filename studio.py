@@ -1,8 +1,5 @@
 import os
 import json
-import re
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, Field
 from typing import Optional, Dict, List
 from dotenv import load_dotenv
 from openai import AzureOpenAI

@@ -1,5 +1,4 @@
 
-from base_models import UserData, EmailGenerationParams, EmailSendRequest, LeadSearchRequest
 from fastapi.responses import HTMLResponse
 import json
 from apscheduler.triggers.cron import CronTrigger
@@ -7,7 +6,7 @@ import pytz
 from email.mime.text import MIMEText
 import base64
 from datetime import datetime
-
+from base_models import EmailSendRequest
 
 def build_auth_html_response(
     title: str,

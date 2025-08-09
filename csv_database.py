@@ -1,13 +1,15 @@
 import csv
 import os
 import pandas as pd
+import glob
 from datetime import datetime
 from typing import Optional, Dict, Any
-import re
 
 class CSVUserDatabase:
-    def __init__(self, csv_file_path: str = "user_database.csv"):
+    def __init__(self, csv_file_path: str = "user_database.csv", tokens_folder: str = "tokens", redis_manager=None):
         self.csv_file_path = csv_file_path
+        self.tokens_folder = tokens_folder
+        self.redis_manager = redis_manager
         self.headers = [
             'first_name', 'last_name', 'email', 'domain', 
             'work_experience', 'designation', 'company_name',
@@ -45,6 +47,38 @@ class CSVUserDatabase:
             return first_name, last_name
         except:
             return "Unknown", ""
+    
+    def _cleanup_old_session_data(self, old_session_id: str) -> None:
+        """Delete token files and Redis session data associated with the old session ID"""
+        if not old_session_id:
+            return
+            
+        try:
+            # Cleanup Redis session first
+            if self.redis_manager:
+                try:
+                    self.redis_manager.delete_session_data(old_session_id)
+                    print(f"✅ Deleted Redis session: {old_session_id}")
+                except Exception as e:
+                    print(f"❌ Failed to delete Redis session {old_session_id}: {e}")
+            
+            # Cleanup token files
+            if os.path.exists(self.tokens_folder):
+                pattern = os.path.join(self.tokens_folder, f"{old_session_id}_*.json")
+                old_token_files = glob.glob(pattern)
+                
+                for token_file in old_token_files:
+                    try:
+                        os.remove(token_file)
+                        print(f"✅ Deleted old token file: {os.path.basename(token_file)}")
+                    except Exception as e:
+                        print(f"❌ Failed to delete token file {token_file}: {e}")
+                        
+                if old_token_files:
+                    print(f"🧹 Cleaned up {len(old_token_files)} old token file(s) for session: {old_session_id}")
+                    
+        except Exception as e:
+            print(f"❌ Error during session cleanup: {e}")
     
     def get_user_by_email(self, email: str) -> Optional[Dict[str, Any]]:
         """Get user record by email"""
@@ -137,10 +171,18 @@ class CSVUserDatabase:
             df.at[user_index, 'last_updated'] = current_time
             df.at[user_index, 'last_login'] = current_time
             
-            # Increment session count if new session
-            if user_data.get('session_id') != existing_user.get('last_session_id'):
+            # Increment session count if new session and cleanup old tokens
+            new_session_id = user_data.get('session_id')
+            old_session_id = existing_user.get('last_session_id')
+            
+            if new_session_id != old_session_id:
                 current_sessions = int(existing_user.get('total_sessions', 0))
                 df.at[user_index, 'total_sessions'] = current_sessions + 1
+                
+                # Cleanup old session data when session changes
+                if old_session_id and old_session_id != new_session_id:
+                    print(f"🔄 Session changed for {email}: {old_session_id} -> {new_session_id}")
+                    self._cleanup_old_session_data(old_session_id)
             
             # If user was deleted and is re-registering, reset deleted status
             if self.is_user_deleted(email) and user_data.get('profile_complete', False):
@@ -289,9 +331,17 @@ class CSVUserDatabase:
             df = pd.read_csv(self.csv_file_path)
             user_index = df[df['email'].str.lower() == email.lower()].index[0]
             
+            # Get old session ID before updating
+            old_session_id = str(df.at[user_index, 'last_session_id']) if pd.notna(df.at[user_index, 'last_session_id']) else ""
+            
             # Update last login and session
             df.at[user_index, 'last_login'] = datetime.now().isoformat()
             df.at[user_index, 'last_session_id'] = session_id
+            
+            # Cleanup old session data if session changed
+            if old_session_id and old_session_id != session_id:
+                print(f"🔄 Session changed during login update for {email}: {old_session_id} -> {session_id}")
+                self._cleanup_old_session_data(old_session_id)
             
             # Save back to CSV
             df.to_csv(self.csv_file_path, index=False)

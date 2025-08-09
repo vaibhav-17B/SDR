@@ -524,7 +524,7 @@ const EmailComposePanel = ({
               <Button
                 onClick={onBackToLists}
                 variant="outline"
-                className="bg-white hover:bg-gray-50 border-gray-200 shadow-sm hover:shadow-md transition-all duration-200 text-gray-600 hover:text-gray-800"
+                className="bg-white hover:bg-gray-50 border-gray-200 shadow-sm hover:shadow-md text-gray-600 hover:text-gray-800 transform hover:scale-[1.02] transition-all duration-300"
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Back to Lists

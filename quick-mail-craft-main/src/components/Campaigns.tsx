@@ -29,7 +29,13 @@ import {
   ChevronUp,
   User,
   Check,
-  FileText
+  FileText,
+  Search,
+  CalendarDays,
+  AlarmClock,
+  Globe2,
+  Hash,
+  MessageSquare
 } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
 import { API_CONFIG } from '@/config/api';
@@ -67,7 +73,7 @@ interface CampaignData {
   prospectsListIds: string[];
   selectedProspects: string[];
   scheduling: {
-    intervalType: 'daily' | 'specific' | 'exclude-weekends';
+    intervalType: 'one-time' | 'daily' | 'specific' | 'exclude-weekends';
     selectedDays: string[];
     time: string;
     timezone: string;
@@ -111,7 +117,7 @@ const Campaigns: React.FC = () => {
     prospectsListIds: [],
     selectedProspects: [],
     scheduling: {
-      intervalType: 'daily',
+      intervalType: 'one-time',
       selectedDays: [],
       time: '09:00',
       timezone: 'UTC'
@@ -122,6 +128,9 @@ const Campaigns: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingMailLists, setIsLoadingMailLists] = useState(false);
   const [expandedLists, setExpandedLists] = useState<Set<string>>(new Set());
+  const [styleSearchQuery, setStyleSearchQuery] = useState('');
+  const [prospectsSearchQuery, setProspectsSearchQuery] = useState('');
+  const [scheduleConfirmed, setScheduleConfirmed] = useState(false);
 
   // Fetch actual prospects lists from API
   useEffect(() => {
@@ -231,9 +240,12 @@ const Campaigns: React.FC = () => {
       case 4:
         return campaignData.selectedProspects.length > 0;
       case 5:
-        return true; // Scheduling has defaults
+        // Schedule is complete only when user has confirmed their schedule settings
+        return scheduleConfirmed && campaignData.scheduling.time !== '' && campaignData.scheduling.timezone !== '' && 
+               (campaignData.scheduling.intervalType !== 'specific' || campaignData.scheduling.selectedDays.length > 0);
       case 6:
-        return true; // Preview is always accessible if previous steps are complete
+        // Preview step is never "complete" - it's just for review, not a completable step
+        return false;
       default:
         return false;
     }
@@ -259,6 +271,11 @@ const Campaigns: React.FC = () => {
   };
 
   const updateCampaignData = (field: keyof CampaignData | string, value: any) => {
+    // Reset schedule confirmation if any scheduling field is changed
+    if (field.startsWith('scheduling.')) {
+      setScheduleConfirmed(false);
+    }
+    
     if (field.includes('.')) {
       const [parent, child] = field.split('.');
       setCampaignData(prev => ({
@@ -349,11 +366,26 @@ const Campaigns: React.FC = () => {
     updateCampaignData('selectedProspects', newSelected);
   };
 
+  // Filter mail composition lists for Style section
+  const filteredMailCompositionLists = mailCompositionLists.filter(list =>
+    list.list_name.toLowerCase().includes(styleSearchQuery.toLowerCase()) ||
+    (list.description && list.description.toLowerCase().includes(styleSearchQuery.toLowerCase())) ||
+    (list.mail_type && list.mail_type.toLowerCase().includes(styleSearchQuery.toLowerCase()))
+  );
+
+  // Filter prospects lists for Prospects section
+  const filteredProspectsLists = prospectsLists.filter(list =>
+    list.list_name.toLowerCase().includes(prospectsSearchQuery.toLowerCase()) ||
+    list.description.toLowerCase().includes(prospectsSearchQuery.toLowerCase()) ||
+    list.tags.some(tag => tag.toLowerCase().includes(prospectsSearchQuery.toLowerCase()))
+  );
+
   const handleDayToggle = (day: string) => {
     const currentDays = campaignData.scheduling.selectedDays;
     const updatedDays = currentDays.includes(day)
       ? currentDays.filter(d => d !== day)
       : [...currentDays, day];
+    setScheduleConfirmed(false); // Reset confirmation when days change
     updateCampaignData('scheduling.selectedDays', updatedDays);
   };
 
@@ -424,10 +456,10 @@ const Campaigns: React.FC = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Card 
-                className={`cursor-pointer transition-all duration-200 hover:shadow-xl shadow-lg border ${
-                  campaignData.channel === 'email' ? 'bg-gray-900 text-white shadow-xl border-gray-900' : 'hover:shadow-xl border-gray-200 hover:bg-gray-50'
+                className={`cursor-pointer transition-all duration-300 hover:shadow-xl shadow-lg border transform hover:scale-[1.02] ${
+                  campaignData.channel === 'email' ? 'bg-gray-900 text-white shadow-xl border-gray-900' : 'hover:shadow-xl border-gray-200 hover:bg-slate-100 hover:border-gray-900'
                 }`}
-                onClick={() => updateCampaignData('channel', 'email')}
+                onClick={() => updateCampaignData('channel', campaignData.channel === 'email' ? '' : 'email')}
               >
                 <CardContent className="p-6 text-center">
                   <Mail className={`w-8 h-8 mx-auto mb-3 ${campaignData.channel === 'email' ? 'text-white' : 'text-gray-900'}`} />
@@ -437,7 +469,7 @@ const Campaigns: React.FC = () => {
               </Card>
 
               <Card 
-                className="cursor-pointer transition-all duration-200 hover:shadow-xl shadow-lg opacity-70 border-gray-200"
+                className="cursor-pointer transition-all duration-300 hover:shadow-xl shadow-lg opacity-70 border-gray-200 transform hover:scale-[1.02] hover:bg-slate-50"
                 onClick={handleLinkedInClick}
               >
                 <CardContent className="p-6 text-center relative">
@@ -451,7 +483,7 @@ const Campaigns: React.FC = () => {
               </Card>
 
               <Card 
-                className="cursor-pointer transition-all duration-200 hover:shadow-xl shadow-lg opacity-70 border-gray-200"
+                className="cursor-pointer transition-all duration-300 hover:shadow-xl shadow-lg opacity-70 border-gray-200 transform hover:scale-[1.02] hover:bg-slate-50"
                 onClick={handleLinkedInClick}
               >
                 <CardContent className="p-6 text-center relative">
@@ -479,6 +511,32 @@ const Campaigns: React.FC = () => {
               <h2 className="text-2xl font-bold text-gray-900 mb-2">Select Style</h2>
               <p className="text-gray-600">Choose from your existing email templates</p>
             </div>
+
+            {/* Search Bar for Style Section */}
+            {mailCompositionLists.length > 0 && (
+              <div className="relative mb-6">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Search className="h-5 w-5 text-gray-400" />
+                </div>
+                <Input
+                  type="text"
+                  placeholder="Search email templates by name, description..."
+                  value={styleSearchQuery}
+                  onChange={(e) => setStyleSearchQuery(e.target.value)}
+                  className="pl-10 pr-4 py-3 w-full border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-gray-900 shadow-sm hover:shadow-md transition-all duration-200"
+                />
+                {styleSearchQuery && (
+                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                    <button
+                      onClick={() => setStyleSearchQuery('')}
+                      className="text-gray-400 hover:text-gray-600 transition-colors"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
             
             {isLoadingMailLists ? (
               <div className="text-center py-8">
@@ -497,13 +555,28 @@ const Campaigns: React.FC = () => {
                   Go to Studio
                 </Button>
               </div>
+            ) : filteredMailCompositionLists.length === 0 ? (
+              <div className="text-center py-8">
+                <Search className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+                <h4 className="text-lg font-semibold text-gray-900 mb-2">No templates found</h4>
+                <p className="text-gray-600 mb-4">No email templates match your search criteria.</p>
+                {styleSearchQuery && (
+                  <Button
+                    variant="outline"
+                    onClick={() => setStyleSearchQuery('')}
+                    className="border-gray-300 text-gray-700 hover:bg-gray-50"
+                  >
+                    Clear search
+                  </Button>
+                )}
+              </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {mailCompositionLists.map((list) => (
+                {filteredMailCompositionLists.map((list) => (
                   <Card 
                     key={list.list_id}
-                    className={`cursor-pointer transition-all duration-200 shadow-lg border group h-full flex flex-col ${
-                      campaignData.style === list.list_id ? 'bg-gray-900 text-white shadow-xl border-gray-900' : 'hover:shadow-xl border-gray-200 hover:bg-gray-50'
+                    className={`cursor-pointer transition-all duration-300 shadow-lg border group h-full flex flex-col transform hover:scale-[1.02] ${
+                      campaignData.style === list.list_id ? 'bg-gray-900 text-white shadow-xl border-gray-900' : 'hover:shadow-xl border-gray-200 hover:bg-slate-100 hover:border-gray-900'
                     }`}
                     onClick={() => updateCampaignData('style', list.list_id)}
                   >
@@ -537,6 +610,16 @@ const Campaigns: React.FC = () => {
                               </span>
                             )}
                           </div>
+                        </div>
+                        {/* Checkbox circle */}
+                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all duration-200 ${
+                          campaignData.style === list.list_id 
+                            ? 'border-white bg-white' 
+                            : 'border-gray-300 group-hover:border-gray-900'
+                        }`}>
+                          {campaignData.style === list.list_id && (
+                            <Check className="w-3 h-3 text-gray-900" />
+                          )}
                         </div>
                       </div>
 
@@ -610,6 +693,32 @@ const Campaigns: React.FC = () => {
               <p className="text-gray-600">Choose specific prospects from your lists for this campaign</p>
             </div>
 
+            {/* Search Bar for Prospects Section */}
+            {prospectsLists.length > 0 && (
+              <div className="relative mb-6">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Search className="h-5 w-5 text-gray-400" />
+                </div>
+                <Input
+                  type="text"
+                  placeholder="Search prospects lists by name, description, or tags..."
+                  value={prospectsSearchQuery}
+                  onChange={(e) => setProspectsSearchQuery(e.target.value)}
+                  className="pl-10 pr-4 py-3 w-full border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-gray-900 shadow-sm hover:shadow-md transition-all duration-200"
+                />
+                {prospectsSearchQuery && (
+                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                    <button
+                      onClick={() => setProspectsSearchQuery('')}
+                      className="text-gray-400 hover:text-gray-600 transition-colors"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Header with Review Lists Option */}
             <div className="flex items-center justify-between mb-4">
               <Label className="text-sm font-semibold text-gray-900 flex items-center gap-2">
@@ -623,11 +732,10 @@ const Campaigns: React.FC = () => {
                   </span>
                 )}
                 <Button
-                  variant="outline"
-                  size="sm"
                   onClick={() => window.open('/prospects', '_blank')}
-                  className="text-xs px-3 py-1 h-7 border-gray-300 text-gray-700 hover:bg-gray-50"
+                  className="bg-gradient-to-r from-gray-900 to-gray-800 hover:from-gray-800 hover:to-gray-700 text-white shadow-md hover:shadow-lg transition-all duration-300 transform hover:scale-105"
                 >
+                  <Eye className="w-4 h-4 mr-1" />
                   Review Lists
                 </Button>
               </div>
@@ -662,21 +770,36 @@ const Campaigns: React.FC = () => {
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">No Prospects Lists Found</h3>
                 <p className="text-gray-600 mb-4">Create prospects lists in the Prospects page to use them in campaigns.</p>
               </div>
+            ) : filteredProspectsLists.length === 0 ? (
+              <div className="text-center py-8">
+                <Search className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">No lists found</h3>
+                <p className="text-gray-600 mb-4">No prospects lists match your search criteria.</p>
+                {prospectsSearchQuery && (
+                  <Button
+                    variant="outline"
+                    onClick={() => setProspectsSearchQuery('')}
+                    className="border-gray-300 text-gray-700 hover:bg-gray-50"
+                  >
+                    Clear search
+                  </Button>
+                )}
+              </div>
             ) : (
               <div className="space-y-3 max-h-[70vh] overflow-y-auto border border-gray-200 rounded-lg p-4 bg-white">
-                {prospectsLists.map(list => {
+                {filteredProspectsLists.map(list => {
                   const isExpanded = expandedLists.has(list.list_id);
                   const listProspectsCount = list.prospects?.length || 0;
                   const selectionState = getListSelectionState(list);
                   
                   return (
                     <div key={list.list_id} className="space-y-2">
-                      <div className={`relative cursor-pointer px-4 py-3 rounded-lg border transition-all duration-200 shadow-sm hover:shadow-md ${
+                      <div className={`relative cursor-pointer px-4 py-3 rounded-lg border transition-all duration-200 shadow-sm hover:shadow-md group ${
                         selectionState === 'all' 
-                          ? 'bg-gray-50 border-gray-300 shadow-md'
+                          ? 'bg-slate-100 text-gray-900 shadow-xl border-gray-900'
                           : selectionState === 'partial'
-                          ? 'bg-gray-50 border-gray-300 shadow-md'
-                          : 'bg-white border-gray-200 hover:bg-gray-50 hover:border-gray-300'
+                          ? 'bg-slate-50 text-gray-800 shadow-xl border-gray-700'
+                          : 'bg-white border-gray-200 hover:bg-slate-100 hover:border-gray-900 hover:shadow-xl transform hover:scale-[1.02]'
                       }`}>
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -689,10 +812,10 @@ const Campaigns: React.FC = () => {
                             >
                               <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all duration-200 ${
                                 selectionState === 'all' 
-                                  ? 'bg-gray-900 border-gray-900' 
+                                  ? 'border-gray-900 bg-gray-900' 
                                   : selectionState === 'partial'
-                                  ? 'bg-gray-600 border-gray-600'
-                                  : 'border-gray-300 hover:border-gray-400'
+                                  ? 'border-gray-700 bg-gray-700'
+                                  : 'border-gray-300 group-hover:border-gray-900'
                               }`}>
                                 {selectionState === 'all' && (
                                   <Check className="w-3 h-3 text-white" />
@@ -706,16 +829,30 @@ const Campaigns: React.FC = () => {
                               onClick={() => handleListToggle(list.list_id)}
                               className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer"
                             >
-                              <Users className="w-5 h-5 flex-shrink-0 text-gray-600" />
+                              <Users className={`w-5 h-5 flex-shrink-0 transition-colors duration-200 ${
+                                selectionState === 'all' || selectionState === 'partial' ? 'text-gray-900' : 'text-gray-600'
+                              }`} />
                               <div className="min-w-0 flex-1">
-                                <span className="font-semibold text-base text-gray-900 truncate block">{list.list_name}</span>
-                                <p className="text-sm text-gray-600 truncate mt-1">{list.description}</p>
+                                <span className={`font-semibold text-base truncate block transition-colors duration-200 ${
+                                  selectionState === 'all' || selectionState === 'partial' ? 'text-gray-900' : 'text-gray-900'
+                                }`}>{list.list_name}</span>
+                                <p className={`text-sm truncate mt-1 transition-colors duration-200 ${
+                                  selectionState === 'all' || selectionState === 'partial' ? 'text-gray-700' : 'text-gray-600'
+                                }`}>{list.description}</p>
                                 <div className="flex items-center gap-2 mt-2">
-                                  <Badge variant="outline" className="text-xs border-gray-300 text-gray-700">
+                                  <Badge variant="outline" className={`text-xs transition-colors duration-200 ${
+                                    selectionState === 'all' || selectionState === 'partial' 
+                                      ? 'border-gray-700 text-gray-900 bg-gray-200/50' 
+                                      : 'border-gray-300 text-gray-700'
+                                  }`}>
                                     {listProspectsCount} prospects
                                   </Badge>
                                   {list.tags.map(tag => (
-                                    <Badge key={tag} variant="secondary" className="text-xs bg-gray-200 text-gray-600">
+                                    <Badge key={tag} variant="secondary" className={`text-xs transition-colors duration-200 ${
+                                      selectionState === 'all' || selectionState === 'partial' 
+                                        ? 'bg-gray-200/70 text-gray-900 border-gray-600' 
+                                        : 'bg-gray-200 text-gray-600'
+                                    }`}>
                                       {tag}
                                     </Badge>
                                   ))}
@@ -725,13 +862,17 @@ const Campaigns: React.FC = () => {
                           </div>
                           <div className="flex items-center gap-2 flex-shrink-0">
                             {selectionState === 'partial' && (
-                              <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                              <span className={`text-xs px-2 py-1 rounded transition-colors duration-200 ${
+                                selectionState === 'all' || selectionState === 'partial' 
+                                  ? 'text-white bg-white/20' 
+                                  : 'text-gray-500 bg-gray-100'
+                              }`}>
                                 {campaignData.selectedProspects.filter(email => list.prospects.map(p => getLeadDisplayEmail(p)).includes(email)).length}/{listProspectsCount}
                               </span>
                             )}
-                            <ChevronDown className={`w-4 h-4 transition-transform duration-200 text-gray-500 ${
-                              isExpanded ? 'rotate-180' : ''
-                            }`} />
+                            <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${
+                              selectionState === 'all' || selectionState === 'partial' ? 'text-white' : 'text-gray-500'
+                            } ${isExpanded ? 'rotate-180' : ''}`} />
                           </div>
                         </div>
                       </div>
@@ -750,9 +891,9 @@ const Campaigns: React.FC = () => {
                             return (
                               <div
                                 key={`${list.list_id}-${index}`}
-                                className={`flex items-center gap-3 p-3 rounded-md cursor-pointer transition-all duration-150 border ${
+                                className={`flex items-center gap-3 p-3 rounded-md cursor-pointer transition-all duration-150 border group ${
                                   isSelected
-                                    ? 'bg-white border-gray-300 shadow-md'
+                                    ? 'bg-gray-900 text-white border-gray-900 shadow-xl'
                                     : 'bg-white hover:bg-gray-50 border-gray-200 hover:border-gray-300 hover:shadow-sm'
                                 }`}
                                 onClick={() => handleProspectToggle(email)}
@@ -760,11 +901,11 @@ const Campaigns: React.FC = () => {
                                 {/* Circular Checkbox */}
                                 <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all duration-200 flex-shrink-0 ${
                                   isSelected 
-                                    ? 'bg-gray-900 border-gray-900' 
-                                    : 'border-gray-300 hover:border-gray-400'
+                                    ? 'border-white bg-white' 
+                                    : 'border-gray-300 group-hover:border-gray-900'
                                 }`}>
                                   {isSelected && (
-                                    <Check className="w-3 h-3 text-white" />
+                                    <Check className="w-3 h-3 text-gray-900" />
                                   )}
                                 </div>
 
@@ -789,11 +930,17 @@ const Campaigns: React.FC = () => {
 
                                 {/* Prospect Details */}
                                 <div className="min-w-0 flex-1">
-                                  <div className="font-semibold text-sm text-gray-900 truncate">{name}</div>
-                                  <div className="text-xs text-gray-600 truncate mt-1">
+                                  <div className={`font-semibold text-sm truncate transition-colors duration-200 ${
+                                    isSelected ? 'text-white' : 'text-gray-900'
+                                  }`}>{name}</div>
+                                  <div className={`text-xs truncate mt-1 transition-colors duration-200 ${
+                                    isSelected ? 'text-gray-200' : 'text-gray-600'
+                                  }`}>
                                     {position} {company && company !== 'No company available' ? `at ${company}` : ''}
                                   </div>
-                                  <div className="text-xs text-gray-500 truncate mt-1 flex items-center gap-1">
+                                  <div className={`text-xs truncate mt-1 flex items-center gap-1 transition-colors duration-200 ${
+                                    isSelected ? 'text-gray-300' : 'text-gray-500'
+                                  }`}>
                                     <Mail className="w-3 h-3 flex-shrink-0" />
                                     {email}
                                   </div>
@@ -827,37 +974,106 @@ const Campaigns: React.FC = () => {
 
             <div className="space-y-6">
               <div className="space-y-4">
-                <Label className="text-sm font-semibold text-gray-900">Frequency</Label>
+                <Label className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                  <CalendarDays className="w-5 h-5" />
+                  Frequency
+                </Label>
                 <div className="space-y-3">
-                  <div className="flex items-center space-x-2">
-                    <input 
-                      type="radio" 
-                      id="daily" 
-                      name="frequency"
-                      checked={campaignData.scheduling.intervalType === 'daily'}
-                      onChange={() => updateCampaignData('scheduling.intervalType', 'daily')}
-                    />
-                    <Label htmlFor="daily">Daily</Label>
+                  <div 
+                    className={`flex items-center space-x-3 p-3 border rounded-lg cursor-pointer transition-all duration-200 ${
+                      campaignData.scheduling.intervalType === 'one-time' 
+                        ? 'bg-gray-900 text-white border-gray-900 shadow-lg' 
+                        : 'border-gray-200 hover:bg-slate-100 hover:border-gray-900 hover:shadow-xl transform hover:scale-[1.02]'
+                    }`}
+                    onClick={() => updateCampaignData('scheduling.intervalType', 'one-time')}
+                  >
+                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all duration-200 ${
+                      campaignData.scheduling.intervalType === 'one-time' 
+                        ? 'border-white bg-white' 
+                        : 'border-gray-300 hover:border-gray-400'
+                    }`}>
+                      {campaignData.scheduling.intervalType === 'one-time' && (
+                        <Check className="w-3 h-3 text-gray-900" />
+                      )}
+                    </div>
+                    <Send className={`w-4 h-4 transition-colors duration-200 ${
+                      campaignData.scheduling.intervalType === 'one-time' ? 'text-white' : 'text-gray-600'
+                    }`} />
+                    <Label className={`flex-1 cursor-pointer transition-colors duration-200 ${
+                      campaignData.scheduling.intervalType === 'one-time' ? 'text-white' : 'text-gray-900'
+                    }`}>One Time</Label>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <input 
-                      type="radio" 
-                      id="exclude-weekends" 
-                      name="frequency"
-                      checked={campaignData.scheduling.intervalType === 'exclude-weekends'}
-                      onChange={() => updateCampaignData('scheduling.intervalType', 'exclude-weekends')}
-                    />
-                    <Label htmlFor="exclude-weekends">Weekdays only</Label>
+                  <div 
+                    className={`flex items-center space-x-3 p-3 border rounded-lg cursor-pointer transition-all duration-200 ${
+                      campaignData.scheduling.intervalType === 'daily' 
+                        ? 'bg-gray-900 text-white border-gray-900 shadow-lg' 
+                        : 'border-gray-200 hover:bg-slate-100 hover:border-gray-900 hover:shadow-xl transform hover:scale-[1.02]'
+                    }`}
+                    onClick={() => updateCampaignData('scheduling.intervalType', 'daily')}
+                  >
+                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all duration-200 ${
+                      campaignData.scheduling.intervalType === 'daily' 
+                        ? 'border-white bg-white' 
+                        : 'border-gray-300 hover:border-gray-400'
+                    }`}>
+                      {campaignData.scheduling.intervalType === 'daily' && (
+                        <Check className="w-3 h-3 text-gray-900" />
+                      )}
+                    </div>
+                    <Calendar className={`w-4 h-4 transition-colors duration-200 ${
+                      campaignData.scheduling.intervalType === 'daily' ? 'text-white' : 'text-gray-600'
+                    }`} />
+                    <Label className={`flex-1 cursor-pointer transition-colors duration-200 ${
+                      campaignData.scheduling.intervalType === 'daily' ? 'text-white' : 'text-gray-900'
+                    }`}>Daily</Label>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <input 
-                      type="radio" 
-                      id="specific" 
-                      name="frequency"
-                      checked={campaignData.scheduling.intervalType === 'specific'}
-                      onChange={() => updateCampaignData('scheduling.intervalType', 'specific')}
-                    />
-                    <Label htmlFor="specific">Specific days</Label>
+                  <div 
+                    className={`flex items-center space-x-3 p-3 border rounded-lg cursor-pointer transition-all duration-200 ${
+                      campaignData.scheduling.intervalType === 'exclude-weekends' 
+                        ? 'bg-gray-900 text-white border-gray-900 shadow-lg' 
+                        : 'border-gray-200 hover:bg-slate-100 hover:border-gray-900 hover:shadow-xl transform hover:scale-[1.02]'
+                    }`}
+                    onClick={() => updateCampaignData('scheduling.intervalType', 'exclude-weekends')}
+                  >
+                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all duration-200 ${
+                      campaignData.scheduling.intervalType === 'exclude-weekends' 
+                        ? 'border-white bg-white' 
+                        : 'border-gray-300 hover:border-gray-400'
+                    }`}>
+                      {campaignData.scheduling.intervalType === 'exclude-weekends' && (
+                        <Check className="w-3 h-3 text-gray-900" />
+                      )}
+                    </div>
+                    <CalendarDays className={`w-4 h-4 transition-colors duration-200 ${
+                      campaignData.scheduling.intervalType === 'exclude-weekends' ? 'text-white' : 'text-gray-600'
+                    }`} />
+                    <Label className={`flex-1 cursor-pointer transition-colors duration-200 ${
+                      campaignData.scheduling.intervalType === 'exclude-weekends' ? 'text-white' : 'text-gray-900'
+                    }`}>Weekdays only</Label>
+                  </div>
+                  <div 
+                    className={`flex items-center space-x-3 p-3 border rounded-lg cursor-pointer transition-all duration-200 ${
+                      campaignData.scheduling.intervalType === 'specific' 
+                        ? 'bg-gray-900 text-white border-gray-900 shadow-lg' 
+                        : 'border-gray-200 hover:bg-slate-100 hover:border-gray-900 hover:shadow-xl transform hover:scale-[1.02]'
+                    }`}
+                    onClick={() => updateCampaignData('scheduling.intervalType', 'specific')}
+                  >
+                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all duration-200 ${
+                      campaignData.scheduling.intervalType === 'specific' 
+                        ? 'border-white bg-white' 
+                        : 'border-gray-300 hover:border-gray-400'
+                    }`}>
+                      {campaignData.scheduling.intervalType === 'specific' && (
+                        <Check className="w-3 h-3 text-gray-900" />
+                      )}
+                    </div>
+                    <Check className={`w-4 h-4 transition-colors duration-200 ${
+                      campaignData.scheduling.intervalType === 'specific' ? 'text-white' : 'text-gray-600'
+                    }`} />
+                    <Label className={`flex-1 cursor-pointer transition-colors duration-200 ${
+                      campaignData.scheduling.intervalType === 'specific' ? 'text-white' : 'text-gray-900'
+                    }`}>Specific days</Label>
                   </div>
                 </div>
 
@@ -881,27 +1097,31 @@ const Campaigns: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="time" className="text-sm font-semibold text-gray-900">
+                  <Label htmlFor="time" className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                    <AlarmClock className="w-4 h-4" />
                     Send Time
                   </Label>
-                  <Input
-                    id="time"
-                    type="time"
-                    value={campaignData.scheduling.time}
-                    onChange={(e) => updateCampaignData('scheduling.time', e.target.value)}
-                    className="w-full shadow-sm"
-                  />
+                  <div className="relative">
+                    <Input
+                      id="time"
+                      type="time"
+                      value={campaignData.scheduling.time}
+                      onChange={(e) => updateCampaignData('scheduling.time', e.target.value)}
+                      className="w-full shadow-sm border-gray-300 focus:ring-2 focus:ring-gray-900 focus:border-gray-900"
+                    />
+                  </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="timezone" className="text-sm font-semibold text-gray-900">
+                  <Label htmlFor="timezone" className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                    <Globe2 className="w-4 h-4" />
                     Timezone
                   </Label>
                   <Select
                     value={campaignData.scheduling.timezone}
                     onValueChange={(value) => updateCampaignData('scheduling.timezone', value)}
                   >
-                    <SelectTrigger className="shadow-sm">
+                    <SelectTrigger className="shadow-sm border-gray-300 focus:ring-2 focus:ring-gray-900 focus:border-gray-900">
                       <SelectValue placeholder="Select timezone" />
                     </SelectTrigger>
                     <SelectContent>
@@ -913,6 +1133,32 @@ const Campaigns: React.FC = () => {
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+
+              {/* Confirm Schedule Button */}
+              <div className="pt-6">
+                <Button
+                  onClick={() => setScheduleConfirmed(true)}
+                  disabled={scheduleConfirmed || 
+                    (campaignData.scheduling.intervalType === 'specific' && campaignData.scheduling.selectedDays.length === 0)}
+                  className={`w-full py-4 text-lg font-medium transition-all duration-300 ${
+                    scheduleConfirmed
+                      ? 'bg-green-600 text-white shadow-lg'
+                      : 'bg-gradient-to-r from-gray-900 to-gray-800 hover:from-gray-800 hover:to-gray-700 text-white shadow-md hover:shadow-lg transform hover:scale-105'
+                  }`}
+                >
+                  {scheduleConfirmed ? (
+                    <>
+                      <Check className="w-5 h-5 mr-2" />
+                      Schedule Confirmed
+                    </>
+                  ) : (
+                    <>
+                      <Calendar className="w-5 h-5 mr-2" />
+                      Confirm Schedule
+                    </>
+                  )}
+                </Button>
               </div>
             </div>
           </div>
@@ -930,7 +1176,7 @@ const Campaigns: React.FC = () => {
             </div>
 
             <div className="space-y-6">
-              <Card className="shadow-xl hover:shadow-2xl transition-shadow duration-300 border border-gray-200">
+              <Card className="shadow-xl border border-gray-200 hover:shadow-2xl transform hover:scale-[1.01] transition-all duration-300">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-gray-900">
                     <Target className="w-5 h-5" />
@@ -940,33 +1186,57 @@ const Campaigns: React.FC = () => {
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <Label className="text-sm font-medium text-gray-600">Campaign Name</Label>
+                      <Label className="text-sm font-medium text-gray-600 flex items-center gap-2">
+                        <Hash className="w-3 h-3" />
+                        Campaign Name
+                      </Label>
                       <p className="font-semibold text-gray-900">{campaignData.name}</p>
                     </div>
                     <div>
-                      <Label className="text-sm font-medium text-gray-600">Channel</Label>
+                      <Label className="text-sm font-medium text-gray-600 flex items-center gap-2">
+                        <Globe className="w-3 h-3" />
+                        Channel
+                      </Label>
                       <div className="flex items-center gap-2">
                         {campaignData.channel === 'email' && <Mail className="w-4 h-4 text-gray-900" />}
                         <span className="font-semibold text-gray-900 capitalize">{campaignData.channel}</span>
                       </div>
                     </div>
                     <div>
-                      <Label className="text-sm font-medium text-gray-600">Style</Label>
-                      <p className="font-semibold text-gray-900">{selectedStyle?.name}</p>
+                      <Label className="text-sm font-medium text-gray-600 flex items-center gap-2">
+                        <Palette className="w-3 h-3" />
+                        Style
+                      </Label>
+                      <div className="flex items-center gap-2">
+                        <FileText className="w-4 h-4 text-gray-600" />
+                        <span className="font-semibold text-gray-900">{selectedStyle?.name || 'Email Templates'}</span>
+                      </div>
                     </div>
                     <div>
-                      <Label className="text-sm font-medium text-gray-600">Prospects</Label>
-                      <p className="font-semibold text-gray-900">{campaignData.selectedProspects.length} selected</p>
+                      <Label className="text-sm font-medium text-gray-600 flex items-center gap-2">
+                        <Users className="w-3 h-3" />
+                        Prospects
+                      </Label>
+                      <div className="flex items-center gap-2">
+                        <User className="w-4 h-4 text-gray-600" />
+                        <span className="font-semibold text-gray-900">{campaignData.selectedProspects.length} selected</span>
+                      </div>
                     </div>
                   </div>
                   <div>
-                    <Label className="text-sm font-medium text-gray-600">Description</Label>
-                    <p className="text-gray-900">{campaignData.description}</p>
+                    <Label className="text-sm font-medium text-gray-600 flex items-center gap-2">
+                      <MessageSquare className="w-3 h-3" />
+                      Description
+                    </Label>
+                    <p className="text-gray-900 bg-gray-50 p-3 rounded-lg border">{campaignData.description}</p>
                   </div>
                   {campaignData.selectedProspects.length > 0 && (
                     <div>
-                      <Label className="text-sm font-medium text-gray-600">Selected Prospects</Label>
-                      <div className="flex flex-wrap gap-2 mt-2">
+                      <Label className="text-sm font-medium text-gray-600 flex items-center gap-2">
+                        <Mail className="w-3 h-3" />
+                        Selected Prospects
+                      </Label>
+                      <div className="flex flex-wrap gap-2 mt-2 bg-gray-50 p-3 rounded-lg border">
                         {campaignData.selectedProspects.slice(0, 6).map(email => (
                           <Badge key={email} variant="outline" className="text-xs border-gray-400 text-gray-700">
                             {email.length > 25 ? `${email.substring(0, 25)}...` : email}
@@ -983,7 +1253,7 @@ const Campaigns: React.FC = () => {
                 </CardContent>
               </Card>
 
-              <Card className="shadow-xl hover:shadow-2xl transition-shadow duration-300 border border-gray-200">
+              <Card className="shadow-xl border border-gray-200 hover:shadow-2xl transform hover:scale-[1.01] transition-all duration-300">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-gray-900">
                     <Clock className="w-5 h-5" />
@@ -993,22 +1263,41 @@ const Campaigns: React.FC = () => {
                 <CardContent>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <Label className="text-sm font-medium text-gray-600">Frequency</Label>
-                      <p className="font-semibold text-gray-900 capitalize">
-                        {campaignData.scheduling.intervalType === 'exclude-weekends' ? 'Weekdays only' : campaignData.scheduling.intervalType}
-                      </p>
+                      <Label className="text-sm font-medium text-gray-600 flex items-center gap-2">
+                        <CalendarDays className="w-3 h-3" />
+                        Frequency
+                      </Label>
+                      <div className="flex items-center gap-2">
+                        <Calendar className="w-4 h-4 text-gray-600" />
+                        <span className="font-semibold text-gray-900 capitalize">
+                          {campaignData.scheduling.intervalType === 'exclude-weekends' 
+                            ? 'Weekdays only' 
+                            : campaignData.scheduling.intervalType === 'one-time'
+                            ? 'One Time'
+                            : campaignData.scheduling.intervalType}
+                        </span>
+                      </div>
                     </div>
                     <div>
-                      <Label className="text-sm font-medium text-gray-600">Time & Timezone</Label>
-                      <p className="font-semibold text-gray-900">
-                        {campaignData.scheduling.time} ({campaignData.scheduling.timezone})
-                      </p>
+                      <Label className="text-sm font-medium text-gray-600 flex items-center gap-2">
+                        <AlarmClock className="w-3 h-3" />
+                        Time & Timezone
+                      </Label>
+                      <div className="flex items-center gap-2">
+                        <Globe2 className="w-4 h-4 text-gray-600" />
+                        <span className="font-semibold text-gray-900">
+                          {campaignData.scheduling.time} ({campaignData.scheduling.timezone})
+                        </span>
+                      </div>
                     </div>
                   </div>
                   {campaignData.scheduling.intervalType === 'specific' && campaignData.scheduling.selectedDays.length > 0 && (
                     <div className="mt-4">
-                      <Label className="text-sm font-medium text-gray-600">Selected Days</Label>
-                      <div className="flex flex-wrap gap-2 mt-1">
+                      <Label className="text-sm font-medium text-gray-600 flex items-center gap-2">
+                        <Check className="w-3 h-3" />
+                        Selected Days
+                      </Label>
+                      <div className="flex flex-wrap gap-2 mt-2 bg-gray-50 p-3 rounded-lg border">
                         {campaignData.scheduling.selectedDays.map(day => (
                           <Badge key={day} variant="outline" className="border-gray-400 text-gray-700">{day}</Badge>
                         ))}
@@ -1047,7 +1336,7 @@ const Campaigns: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
         {/* Progress Steps */}
-        <Card className="mb-8 shadow-xl hover:shadow-2xl transition-shadow duration-300 border border-gray-200">
+        <Card className="mb-8 shadow-xl border border-gray-200 hover:shadow-2xl transform hover:scale-[1.01] transition-all duration-300">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               {STEPS.map((step, index) => {
@@ -1097,7 +1386,7 @@ const Campaigns: React.FC = () => {
         </Card>
 
         {/* Step Content */}
-        <Card className="mb-8 shadow-xl hover:shadow-2xl transition-shadow duration-300 border border-gray-200">
+        <Card className="mb-8 shadow-xl border border-gray-200 hover:shadow-2xl transform hover:scale-[1.01] transition-all duration-300">
           <CardContent className="p-8">
             {renderStepContent()}
           </CardContent>

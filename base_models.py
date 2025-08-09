@@ -2,27 +2,6 @@ from pydantic import BaseModel, EmailStr, Field, field_validator
 from typing import Optional, List, Dict, Any, Union
 import pytz
 
-# ============ COMMON BASE MODELS ============
-
-class SessionIDRequest(BaseModel):
-    """Common base model for requests requiring session ID in headers"""
-    pass
-
-class IDOnlyRequest(BaseModel):
-    """Common base model for requests that only need an ID parameter"""
-    pass
-
-class SuccessResponse(BaseModel):
-    """Common success response model"""
-    success: bool = True
-    message: Optional[str] = None
-
-class ErrorResponse(BaseModel):
-    """Common error response model"""
-    success: bool = False
-    error: str
-    message: Optional[str] = None
-
 # ============ AUTHENTICATION MODELS ============
 
 class GmailAuthRequest(BaseModel):

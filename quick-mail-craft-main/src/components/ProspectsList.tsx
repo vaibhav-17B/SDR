@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { ChevronDown, ChevronUp, List, Users, Trash2, Edit2, Plus, Calendar, AlertTriangle, User, Mail, MoreVertical } from 'lucide-react';
+import { ChevronDown, ChevronUp, List, Users, Trash2, Edit2, Plus, Calendar, AlertTriangle, User, Mail, MoreVertical, Search, X } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { toast } from '@/components/ui/sonner';
 import { API_CONFIG } from '@/config/api';
@@ -45,6 +45,7 @@ const ProspectsList: React.FC<ProspectsListProps> = ({ onSelectProspectsForNewLi
   const [listToDelete, setListToDelete] = useState<{id: string, name: string} | null>(null);
   const [prospectDeleteConfirmOpen, setProspectDeleteConfirmOpen] = useState(false);
   const [prospectToDelete, setProspectToDelete] = useState<{listId: string, prospectIndex: number, prospectName: string} | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     fetchProspectsLists();
@@ -327,6 +328,13 @@ const ProspectsList: React.FC<ProspectsListProps> = ({ onSelectProspectsForNewLi
     return prospect.personal_information?.picture_url;
   };
 
+  // Filter prospects lists based on search query
+  const filteredProspectsLists = prospectsLists.filter(list => 
+    list.list_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    list.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    list.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
+
   if (prospectsLists.length === 0 && !isLoading) {
     return (
       <div className="space-y-6">
@@ -426,7 +434,7 @@ const ProspectsList: React.FC<ProspectsListProps> = ({ onSelectProspectsForNewLi
         <div>
           <h2 className="text-2xl font-bold text-gray-900 flex items-center">
             <List className="w-7 h-7 mr-3 text-gray-700" />
-            My Prospects Lists ({prospectsLists.length})
+            My Prospects Lists ({searchQuery ? filteredProspectsLists.length : prospectsLists.length}{searchQuery ? ` of ${prospectsLists.length}` : ''})
           </h2>
           <p className="text-gray-600 mt-1">Organize and manage your prospects efficiently</p>
         </div>
@@ -490,6 +498,30 @@ const ProspectsList: React.FC<ProspectsListProps> = ({ onSelectProspectsForNewLi
         </Dialog>
       </div>
 
+      {/* Search Bar */}
+      <div className="relative">
+        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+          <Search className="h-5 w-5 text-gray-400" />
+        </div>
+        <Input
+          type="text"
+          placeholder="Search lists by name, description, or tags..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-10 pr-4 py-3 w-full border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-gray-900 shadow-sm hover:shadow-md transition-all duration-200"
+        />
+        {searchQuery && (
+          <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+            <button
+              onClick={() => setSearchQuery('')}
+              className="text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+      </div>
+
       {/* Lists Grid */}
       <div className="space-y-4">
         {isLoading ? (
@@ -497,12 +529,27 @@ const ProspectsList: React.FC<ProspectsListProps> = ({ onSelectProspectsForNewLi
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
             <p className="text-sm text-gray-500 mt-3">Loading prospects lists...</p>
           </div>
+        ) : filteredProspectsLists.length === 0 ? (
+          <div className="text-center py-8">
+            <Search className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">No lists found</h3>
+            <p className="text-gray-600">No prospects lists match your search criteria.</p>
+            {searchQuery && (
+              <Button
+                variant="outline"
+                onClick={() => setSearchQuery('')}
+                className="mt-4 border-gray-300 text-gray-700 hover:bg-gray-50"
+              >
+                Clear search
+              </Button>
+            )}
+          </div>
         ) : (
           <div className="grid gap-4">
-            {prospectsLists.map((listItem) => (
+            {filteredProspectsLists.map((listItem) => (
               <Card 
                 key={listItem.list_id} 
-                className="border border-gray-200 hover:border-gray-300 transition-all duration-200 shadow-lg hover:shadow-2xl bg-gradient-to-br from-white to-gray-50 cursor-pointer"
+                className="border border-gray-200 hover:border-gray-900 hover:bg-slate-100 transition-all duration-300 shadow-lg hover:shadow-xl bg-white cursor-pointer transform hover:scale-[1.01]"
                 onClick={() => setExpandedList(expandedList === listItem.list_id ? null : listItem.list_id)}
               >
                 <CardContent className="p-6">
@@ -565,7 +612,7 @@ const ProspectsList: React.FC<ProspectsListProps> = ({ onSelectProspectsForNewLi
                             {listItem.prospects.map((prospect, index) => (
                               <div
                                 key={index}
-                                className="group bg-white p-4 rounded-lg border border-gray-200 hover:border-gray-300 hover:shadow-md transition-all duration-200"
+                                className="group bg-white p-4 rounded-lg border border-gray-200 hover:border-gray-900 hover:bg-slate-100 hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02]"
                               >
                                 <div className="flex items-center space-x-4">
                                   <div className="flex-shrink-0">
