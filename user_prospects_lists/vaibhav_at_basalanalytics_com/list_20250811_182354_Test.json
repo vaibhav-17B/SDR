@@ -1,0 +1,24 @@
+{
+  "list_id": "list_20250811_182354",
+  "list_name": "Test",
+  "description": "Test",
+  "prospects": [
+    {
+      "personal_information": {
+        "full_name": "Vaibhav Singh",
+        "primary_professional_email": "vaibhav@basalanalytics.com"
+      },
+      "current_position": {
+        "title": "AI Intern"
+      },
+      "contact_information": {
+        "primary_email": "vaibhav@basalanalytics.com"
+      },
+      "custom_fields": {}
+    }
+  ],
+  "total_count": 1,
+  "created_timestamp": "2025-08-11T18:23:54.236140",
+  "tags": [],
+  "last_updated": "2025-08-11T18:24:01.813508"
+}

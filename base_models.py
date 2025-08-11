@@ -274,6 +274,92 @@ class AddCustomLeadResponse(BaseModel):
     list_id: str
     message: str
 
+# ============ CAMPAIGN MODELS ============
+
+class CampaignChannel(BaseModel):
+    """Model for campaign channel (Email, LinkedIn, etc.)"""
+    channel_id: int
+    name: str
+    enabled: bool
+
+class CampaignMailStyle(BaseModel):
+    """Model for campaign mail style"""
+    style_id: str
+    style_name: str
+
+class CampaignAnalytics(BaseModel):
+    """Model for campaign analytics"""
+    emails_sent: int = 0
+    emails_opened: int = 0
+    emails_replied: int = 0
+    linkedin_messages_sent: int = 0
+    linkedin_connections: int = 0
+
+class CampaignData(BaseModel):
+    """Model for campaign data"""
+    campaign_id: str
+    campaign_name: str
+    description: str
+    created_date: str
+    created_time: str
+    date_started: Optional[str] = None
+    date_last_modified: str
+    status: str  # draft, active, paused, completed
+    channels: List[CampaignChannel]
+    mail_styles: List[CampaignMailStyle]
+    prospects_list_id: Optional[str] = None
+    prospects_count: int = 0
+    campaign_data: Optional[Dict[str, Any]] = None
+
+class CreateCampaignRequest(BaseModel):
+    """Request model for creating a new campaign"""
+    campaign_name: str
+    description: str = ""
+    channels: List[CampaignChannel] = []
+    mail_styles: List[CampaignMailStyle] = []
+    prospects_list_id: Optional[str] = None
+    prospects_count: Optional[int] = 0
+
+class CreateCampaignResponse(BaseModel):
+    """Response model for campaign creation"""
+    success: bool
+    campaign_id: str
+    message: str
+
+class UpdateCampaignRequest(BaseModel):
+    """Request model for updating campaign"""
+    campaign_name: Optional[str] = None
+    description: Optional[str] = None
+    channels: Optional[List[CampaignChannel]] = None
+    mail_styles: Optional[List[CampaignMailStyle]] = None
+    prospects_list_id: Optional[str] = None
+    prospects_count: Optional[int] = None
+    status: Optional[str] = None
+
+class UpdateCampaignResponse(BaseModel):
+    """Response model for campaign update"""
+    success: bool
+    campaign_id: str
+    message: str
+
+class CampaignsResponse(BaseModel):
+    """Response model for getting user campaigns"""
+    success: bool
+    user_email: str
+    total_campaigns: int
+    campaigns: List[CampaignData]
+
+class CampaignByIdResponse(BaseModel):
+    """Response model for getting campaign by ID"""
+    success: bool
+    campaign: CampaignData
+
+class DeleteCampaignResponse(BaseModel):
+    """Response model for deleting campaign"""
+    success: bool
+    campaign_id: str
+    message: str
+
 # ============ LOGOUT MODEL ============
 
 class LogoutResponse(BaseModel):

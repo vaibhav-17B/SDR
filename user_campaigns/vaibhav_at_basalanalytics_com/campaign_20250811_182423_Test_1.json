@@ -1,0 +1,32 @@
+{
+  "campaign_id": "campaign_20250811_182423",
+  "campaign_name": "Test_1",
+  "description": "Test",
+  "created_timestamp": "2025-08-11T18:24:23.448452",
+  "date_started": null,
+  "date_last_modified": "2025-08-11T18:33:32.970371",
+  "status": "completed",
+  "channels": [
+    {
+      "channel_id": 1,
+      "name": "Email",
+      "enabled": true
+    }
+  ],
+  "mail_styles": [
+    {
+      "style_id": "list-395ad343",
+      "style_name": "M1"
+    }
+  ],
+  "prospects_list_id": "list_20250811_182354",
+  "prospects_count": 0,
+  "campaign_settings": {},
+  "analytics": {
+    "emails_sent": 0,
+    "emails_opened": 0,
+    "emails_replied": 0,
+    "linkedin_messages_sent": 0,
+    "linkedin_connections": 0
+  }
+}

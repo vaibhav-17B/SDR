@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { 
   Target, 
   Mail, 
@@ -35,7 +36,14 @@ import {
   AlarmClock,
   Globe2,
   Hash,
-  MessageSquare
+  MessageSquare,
+  Play,
+  Pause,
+  Trash2,
+  Edit3,
+  Plus,
+  Activity,
+  BarChart3
 } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
 import { API_CONFIG } from '@/config/api';
@@ -80,6 +88,21 @@ interface CampaignData {
   };
 }
 
+interface SavedCampaign {
+  campaign_id: string;
+  campaign_name: string;
+  description: string;
+  created_date: string;
+  created_time: string;
+  date_started?: string;
+  date_last_modified: string;
+  status: 'draft' | 'active' | 'paused' | 'completed';
+  channels: Array<{ channel_id: number; name: string; enabled: boolean }>;
+  mail_styles: Array<{ style_id: string; style_name: string }>;
+  prospects_list_id?: string;
+  prospects_count: number;
+}
+
 const STEPS = [
   { id: 1, name: 'Campaign Info', icon: Target },
   { id: 2, name: 'Channel', icon: Globe },
@@ -107,6 +130,7 @@ const TIMEZONE_OPTIONS = [
 
 const Campaigns: React.FC = () => {
   const navigate = useNavigate();
+  const [view, setView] = useState<'list' | 'create'>('list'); // New state for view mode
   const [currentStep, setCurrentStep] = useState(1);
   const [showComingSoonPopup, setShowComingSoonPopup] = useState(false);
   const [campaignData, setCampaignData] = useState<CampaignData>({
@@ -123,6 +147,8 @@ const Campaigns: React.FC = () => {
       timezone: 'UTC'
     }
   });
+  const [savedCampaigns, setSavedCampaigns] = useState<SavedCampaign[]>([]); // New state for saved campaigns
+  const [isLoadingCampaigns, setIsLoadingCampaigns] = useState(false); // New loading state
   const [prospectsLists, setProspectsLists] = useState<ProspectsListItem[]>([]);
   const [mailCompositionLists, setMailCompositionLists] = useState<MailCompositionList[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -131,11 +157,16 @@ const Campaigns: React.FC = () => {
   const [styleSearchQuery, setStyleSearchQuery] = useState('');
   const [prospectsSearchQuery, setProspectsSearchQuery] = useState('');
   const [scheduleConfirmed, setScheduleConfirmed] = useState(false);
+  const [campaignSearchQuery, setCampaignSearchQuery] = useState(''); // New search state for campaigns
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false); // New state for delete confirmation
+  const [campaignToDelete, setCampaignToDelete] = useState<{id: string, name: string} | null>(null); // Campaign to delete
+  const [editingCampaignId, setEditingCampaignId] = useState<string | null>(null); // Campaign being edited
 
   // Fetch actual prospects lists from API
   useEffect(() => {
     fetchProspectsLists();
     fetchMailCompositionLists();
+    fetchSavedCampaigns();
   }, []);
 
   const fetchProspectsLists = async () => {
@@ -220,6 +251,116 @@ const Campaigns: React.FC = () => {
     }
   };
 
+  const fetchSavedCampaigns = async () => {
+    try {
+      setIsLoadingCampaigns(true);
+      const sessionId = getSessionId();
+      
+      if (!sessionId) {
+        console.log('No session ID found for campaigns');
+        return;
+      }
+
+      const response = await fetch(`${API_CONFIG.BASE_URL}/api/campaigns`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'ngrok-skip-browser-warning': 'true',
+          'X-Session-ID': sessionId
+        }
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          console.log('Not authenticated for campaigns');
+          return;
+        }
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      if (data.success && data.campaigns) {
+        setSavedCampaigns(data.campaigns);
+        console.log(`Loaded ${data.campaigns.length} saved campaigns`);
+      }
+    } catch (error) {
+      console.error('Error fetching saved campaigns:', error);
+      toast.error('Failed to load saved campaigns');
+    } finally {
+      setIsLoadingCampaigns(false);
+    }
+  };
+
+  const loadCampaignForEditing = async (campaignId: string) => {
+    try {
+      setIsLoading(true);
+      const sessionId = getSessionId();
+      
+      if (!sessionId) {
+        toast.error('Authentication required. Please refresh and try again.');
+        return;
+      }
+
+      const response = await fetch(`${API_CONFIG.BASE_URL}/api/campaigns/${campaignId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'ngrok-skip-browser-warning': 'true',
+          'X-Session-ID': sessionId
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ detail: 'Unknown error occurred' }));
+        throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      if (data.success && data.campaign) {
+        const campaign = data.campaign;
+        
+        // Map backend campaign data to frontend format
+        const channel = campaign.channels?.length > 0 ? 
+          (campaign.channels.some((c: any) => c.channel_id === 1) && campaign.channels.some((c: any) => c.channel_id === 2)) ? 'both' :
+          campaign.channels.some((c: any) => c.channel_id === 1) ? 'email' :
+          campaign.channels.some((c: any) => c.channel_id === 2) ? 'linkedin' : '' : '';
+
+        const style = campaign.mail_styles?.length > 0 ? campaign.mail_styles[0].style_id : '';
+
+        setCampaignData({
+          name: campaign.campaign_name,
+          description: campaign.description || '',
+          channel: channel,
+          style: style,
+          prospectsListIds: campaign.prospects_list_id ? [campaign.prospects_list_id] : [],
+          selectedProspects: [], // Will be loaded when prospects step is reached
+          scheduling: {
+            intervalType: 'one-time',
+            selectedDays: [],
+            time: '09:00',
+            timezone: 'UTC'
+          }
+        });
+
+        setEditingCampaignId(campaignId);
+        setCurrentStep(1);
+        setView('create');
+        
+        toast.success(`Campaign "${campaign.campaign_name}" loaded for editing`);
+        
+      } else {
+        throw new Error(data.message || 'Failed to load campaign');
+      }
+    } catch (error) {
+      console.error('Error loading campaign:', error);
+      toast.error(`Failed to load campaign: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleMailListPreview = (list: MailCompositionList) => {
     // Navigate to Studio page with selected list
     navigate('/studio', { state: { selectedList: list } });
@@ -240,8 +381,8 @@ const Campaigns: React.FC = () => {
       case 4:
         return campaignData.selectedProspects.length > 0;
       case 5:
-        // Schedule is complete only when user has confirmed their schedule settings
-        return scheduleConfirmed && campaignData.scheduling.time !== '' && campaignData.scheduling.timezone !== '' && 
+        // Schedule is complete when basic settings are filled
+        return campaignData.scheduling.time !== '' && campaignData.scheduling.timezone !== '' && 
                (campaignData.scheduling.intervalType !== 'specific' || campaignData.scheduling.selectedDays.length > 0);
       case 6:
         // Preview step is never "complete" - it's just for review, not a completable step
@@ -271,11 +412,6 @@ const Campaigns: React.FC = () => {
   };
 
   const updateCampaignData = (field: keyof CampaignData | string, value: any) => {
-    // Reset schedule confirmation if any scheduling field is changed
-    if (field.startsWith('scheduling.')) {
-      setScheduleConfirmed(false);
-    }
-    
     if (field.includes('.')) {
       const [parent, child] = field.split('.');
       setCampaignData(prev => ({
@@ -380,27 +516,692 @@ const Campaigns: React.FC = () => {
     list.tags.some(tag => tag.toLowerCase().includes(prospectsSearchQuery.toLowerCase()))
   );
 
+  // Filter campaigns for Campaign list
+  const filteredCampaigns = savedCampaigns.filter(campaign =>
+    campaign.campaign_name.toLowerCase().includes(campaignSearchQuery.toLowerCase()) ||
+    (campaign.description && campaign.description.toLowerCase().includes(campaignSearchQuery.toLowerCase())) ||
+    campaign.status.toLowerCase().includes(campaignSearchQuery.toLowerCase()) ||
+    campaign.channels?.some(channel => channel.name.toLowerCase().includes(campaignSearchQuery.toLowerCase()))
+  );
+
   const handleDayToggle = (day: string) => {
     const currentDays = campaignData.scheduling.selectedDays;
     const updatedDays = currentDays.includes(day)
       ? currentDays.filter(d => d !== day)
       : [...currentDays, day];
-    setScheduleConfirmed(false); // Reset confirmation when days change
     updateCampaignData('scheduling.selectedDays', updatedDays);
   };
 
   const createCampaign = async () => {
+    const isEditing = editingCampaignId !== null;
+    console.log(`\n🚀 FRONTEND ACTION: ${isEditing ? 'UPDATE_CAMPAIGN' : 'CREATE_CAMPAIGN'}`);
+    console.log('📝 Campaign Data:', campaignData);
+    
     setIsLoading(true);
     try {
-      // Mock campaign creation - replace with actual API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      toast.success('Campaign created successfully!');
-      // Reset form or redirect
+      const sessionId = getSessionId();
+      
+      if (!sessionId) {
+        toast.error('Authentication required. Please refresh and try again.');
+        return;
+      }
+
+      // Map frontend campaign data to backend format
+      const channels = [];
+      if (campaignData.channel === 'email' || campaignData.channel === 'both') {
+        channels.push({ channel_id: 1, name: "Email", enabled: true });
+      }
+      if (campaignData.channel === 'linkedin' || campaignData.channel === 'both') {
+        channels.push({ channel_id: 2, name: "LinkedIn", enabled: true });
+      }
+
+      // Get actual mail style from user's saved mail lists
+      const selectedMailList = mailCompositionLists.find(list => list.list_id === campaignData.style);
+      const mailStyles = selectedMailList ? [
+        { style_id: selectedMailList.list_id, style_name: selectedMailList.list_name }
+      ] : [];
+
+      // Get selected prospects list ID and calculate prospects count
+      const selectedProspectsList = prospectsLists.find(list => 
+        campaignData.selectedProspects.length > 0 && 
+        list.prospects.some(prospect => campaignData.selectedProspects.includes(getLeadDisplayEmail(prospect)))
+      );
+      const prospectsListId = selectedProspectsList ? selectedProspectsList.list_id : null;
+      const prospectsCount = campaignData.selectedProspects.length;
+
+      let campaignPayload;
+      
+      if (isEditing) {
+        // For updates, use UpdateCampaignRequest format - only send fields that might change
+        campaignPayload = {
+          campaign_name: campaignData.name,
+          description: campaignData.description,
+          channels: channels,
+          mail_styles: mailStyles,
+          prospects_list_id: prospectsListId,
+          prospects_count: prospectsCount
+        };
+      } else {
+        // For creates, use CreateCampaignRequest format
+        campaignPayload = {
+          campaign_name: campaignData.name,
+          description: campaignData.description,
+          channels: channels,
+          mail_styles: mailStyles,
+          prospects_list_id: prospectsListId,
+          prospects_count: prospectsCount
+        };
+      }
+
+      console.log('📡 API Request:', campaignPayload);
+
+      const url = isEditing 
+        ? `${API_CONFIG.BASE_URL}/api/campaigns/${editingCampaignId}`
+        : `${API_CONFIG.BASE_URL}/api/campaigns`;
+      
+      const method = isEditing ? 'PUT' : 'POST';
+
+      const response = await fetch(url, {
+        method: method,
+        headers: {
+          'Content-Type': 'application/json',
+          'ngrok-skip-browser-warning': 'true',
+          'X-Session-ID': sessionId
+        },
+        body: JSON.stringify(campaignPayload)
+      });
+
+      console.log('📡 Response status:', response.status, response.statusText);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ detail: 'Unknown error occurred' }));
+        
+        // Handle specific error cases
+        if (response.status === 400 && errorData.detail && errorData.detail.includes('already exists')) {
+          // Campaign name duplicate error - show user-friendly message
+          throw new Error(errorData.detail);
+        }
+        
+        throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log(`✅ API SUCCESS: ${isEditing ? 'UPDATE_CAMPAIGN' : 'CREATE_CAMPAIGN'}`);
+      console.log('📤 Response data:', data);
+
+      if (data.success) {
+        toast.success(`Campaign "${campaignData.name}" ${isEditing ? 'updated' : 'created'} successfully!`, {
+          description: `Campaign ID: ${isEditing ? editingCampaignId : data.campaign_id}`,
+          duration: 5000,
+        });
+
+        // Reset form to initial state
+        setCampaignData({
+          name: '',
+          description: '',
+          channel: '',
+          style: '',
+          prospectsListIds: [],
+          selectedProspects: [],
+          scheduling: {
+            intervalType: 'one-time',
+            selectedDays: [],
+            time: '09:00',
+            timezone: 'UTC'
+          }
+        });
+        
+        // Reset editing state and go back to list view
+        setEditingCampaignId(null);
+        setCurrentStep(1);
+        setView('list');
+        
+        // Refresh the campaigns list
+        fetchSavedCampaigns();
+        
+      } else {
+        throw new Error(data.message || `Failed to ${isEditing ? 'update' : 'create'} campaign`);
+      }
     } catch (error) {
-      toast.error('Failed to create campaign');
+      console.error(`❌ Error ${isEditing ? 'updating' : 'creating'} campaign:`, error);
+      toast.error(`Failed to ${isEditing ? 'update' : 'create'} campaign: ${error instanceof Error ? error.message : 'Unknown error'}`, {
+        duration: 5000,
+      });
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleCampaignStatusChange = async (campaignId: string, newStatus: 'draft' | 'active' | 'paused' | 'completed') => {
+    try {
+      setIsLoading(true);
+      const sessionId = getSessionId();
+      
+      if (!sessionId) {
+        toast.error('Authentication required. Please refresh and try again.');
+        return;
+      }
+
+      const response = await fetch(`${API_CONFIG.BASE_URL}/api/campaigns/${campaignId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'ngrok-skip-browser-warning': 'true',
+          'X-Session-ID': sessionId
+        },
+        body: JSON.stringify({ status: newStatus })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ detail: 'Unknown error occurred' }));
+        throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      if (data.success) {
+        toast.success(`Campaign ${newStatus} successfully!`);
+        fetchSavedCampaigns(); // Refresh campaigns list
+      } else {
+        throw new Error(data.message || 'Failed to update campaign status');
+      }
+    } catch (error) {
+      console.error('Error updating campaign status:', error);
+      toast.error(`Failed to update campaign: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDeleteCampaign = (campaignId: string, campaignName: string) => {
+    setCampaignToDelete({ id: campaignId, name: campaignName });
+    setShowDeleteDialog(true);
+  };
+
+  const confirmDeleteCampaign = async () => {
+    if (!campaignToDelete) return;
+
+    try {
+      setIsLoading(true);
+      const sessionId = getSessionId();
+      
+      if (!sessionId) {
+        toast.error('Authentication required. Please refresh and try again.');
+        return;
+      }
+
+      const response = await fetch(`${API_CONFIG.BASE_URL}/api/campaigns/${campaignToDelete.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'ngrok-skip-browser-warning': 'true',
+          'X-Session-ID': sessionId
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ detail: 'Unknown error occurred' }));
+        throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      if (data.success) {
+        toast.success(`Campaign "${campaignToDelete.name}" deleted successfully!`);
+        fetchSavedCampaigns(); // Refresh campaigns list
+        setShowDeleteDialog(false);
+        setCampaignToDelete(null);
+      } else {
+        throw new Error(data.message || 'Failed to delete campaign');
+      }
+    } catch (error) {
+      console.error('Error deleting campaign:', error);
+      toast.error(`Failed to delete campaign: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const saveDraft = async () => {
+    const isEditingExisting = editingCampaignId !== null;
+    console.log(`\n💾 FRONTEND ACTION: ${isEditingExisting ? 'UPDATE_DRAFT' : 'SAVE_DRAFT'}`);
+    console.log('📝 Campaign Data:', campaignData);
+    console.log('📝 Editing Campaign ID:', editingCampaignId);
+    
+    setIsLoading(true);
+    try {
+      const sessionId = getSessionId();
+      
+      if (!sessionId) {
+        toast.error('Authentication required. Please refresh and try again.');
+        return;
+      }
+
+      // Map frontend campaign data to backend format
+      const channels = [];
+      if (campaignData.channel === 'email' || campaignData.channel === 'both') {
+        channels.push({ channel_id: 1, name: "Email", enabled: true });
+      }
+      if (campaignData.channel === 'linkedin' || campaignData.channel === 'both') {
+        channels.push({ channel_id: 2, name: "LinkedIn", enabled: true });
+      }
+
+      // Get actual mail style from user's saved mail lists
+      const selectedMailList = mailCompositionLists.find(list => list.list_id === campaignData.style);
+      const mailStyles = selectedMailList ? [
+        { style_id: selectedMailList.list_id, style_name: selectedMailList.list_name }
+      ] : [];
+
+      // Get selected prospects list ID and calculate prospects count
+      const selectedProspectsList = prospectsLists.find(list => 
+        campaignData.selectedProspects.length > 0 && 
+        list.prospects.some(prospect => campaignData.selectedProspects.includes(getLeadDisplayEmail(prospect)))
+      );
+      const prospectsListId = selectedProspectsList ? selectedProspectsList.list_id : null;
+      const prospectsCount = campaignData.selectedProspects.length;
+
+      const campaignPayload = {
+        campaign_name: campaignData.name || 'Untitled Campaign',
+        description: campaignData.description || 'Campaign in progress',
+        channels: channels,
+        mail_styles: mailStyles,
+        prospects_list_id: prospectsListId,
+        prospects_count: prospectsCount
+      };
+
+      console.log(`📡 ${isEditingExisting ? 'Update' : 'Create'} Draft API Request:`, campaignPayload);
+
+      // Choose URL and method based on whether we're editing existing campaign
+      const url = isEditingExisting 
+        ? `${API_CONFIG.BASE_URL}/api/campaigns/${editingCampaignId}`
+        : `${API_CONFIG.BASE_URL}/api/campaigns`;
+      
+      const method = isEditingExisting ? 'PUT' : 'POST';
+
+      const response = await fetch(url, {
+        method: method,
+        headers: {
+          'Content-Type': 'application/json',
+          'ngrok-skip-browser-warning': 'true',
+          'X-Session-ID': sessionId
+        },
+        body: JSON.stringify(campaignPayload)
+      });
+
+      console.log('📡 Response status:', response.status, response.statusText);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ detail: 'Unknown error occurred' }));
+        
+        // Handle specific error cases
+        if (response.status === 400 && errorData.detail && errorData.detail.includes('already exists')) {
+          // Campaign name duplicate error
+          throw new Error(errorData.detail);
+        }
+        
+        throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log(`✅ API SUCCESS: ${isEditingExisting ? 'UPDATE_DRAFT' : 'SAVE_DRAFT'}`);
+      console.log('📤 Response data:', data);
+
+      if (data.success) {
+        const campaignId = isEditingExisting ? editingCampaignId : data.campaign_id;
+        
+        toast.success(`Draft ${isEditingExisting ? 'updated' : 'saved'} successfully!`, {
+          description: `Campaign ID: ${campaignId}`,
+          duration: 3000,
+        });
+
+        // If we were creating a new campaign and it was successful, set the editing ID
+        if (!isEditingExisting && data.campaign_id) {
+          setEditingCampaignId(data.campaign_id);
+        }
+
+        // Refresh the campaigns list without clearing the form
+        fetchSavedCampaigns();
+        
+      } else {
+        throw new Error(data.message || `Failed to ${isEditingExisting ? 'update' : 'save'} campaign draft`);
+      }
+    } catch (error) {
+      console.error(`❌ Error ${isEditingExisting ? 'updating' : 'saving'} draft:`, error);
+      toast.error(`Failed to ${isEditingExisting ? 'update' : 'save'} draft: ${error instanceof Error ? error.message : 'Unknown error'}`, {
+        duration: 5000,
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const renderCampaignsList = () => {
+    return (
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center space-x-3">
+            <div className="p-3 bg-gray-900 rounded-lg">
+              <Target className="h-8 w-8 text-white" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900">Your Campaigns</h2>
+              <p className="text-gray-600">
+                {filteredCampaigns.length} of {savedCampaigns.length} campaign{savedCampaigns.length !== 1 ? 's' : ''} {campaignSearchQuery ? 'found' : 'total'}
+              </p>
+            </div>
+          </div>
+          <Button
+            onClick={() => {
+              setView('create');
+              setEditingCampaignId(null); // Reset editing state for new campaign
+              setCampaignData({ // Reset form data for new campaign
+                name: '',
+                description: '',
+                channel: '',
+                style: '',
+                prospectsListIds: [],
+                selectedProspects: [],
+                scheduling: {
+                  intervalType: 'one-time',
+                  selectedDays: [],
+                  time: '09:00',
+                  timezone: 'UTC'
+                }
+              });
+              setCurrentStep(1);
+            }}
+            className="bg-gradient-to-r from-gray-900 to-gray-800 hover:from-gray-800 hover:to-gray-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Create New Campaign
+          </Button>
+        </div>
+
+        {/* Search Bar */}
+        {savedCampaigns.length > 0 && (
+          <div className="relative mb-6">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Search className="h-5 w-5 text-gray-400" />
+            </div>
+            <Input
+              type="text"
+              placeholder="Search campaigns by name, description, status, or channel..."
+              value={campaignSearchQuery}
+              onChange={(e) => setCampaignSearchQuery(e.target.value)}
+              className="pl-10 pr-4 py-3 w-full border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-gray-900 shadow-sm hover:shadow-md transition-all duration-200"
+            />
+            {campaignSearchQuery && (
+              <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                <button
+                  onClick={() => setCampaignSearchQuery('')}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Campaigns Grid */}
+        {isLoadingCampaigns ? (
+          <div className="text-center py-16">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
+            <p className="text-gray-600 text-lg">Loading your campaigns...</p>
+          </div>
+        ) : savedCampaigns.length === 0 ? (
+          <div className="text-center py-16">
+            <Target className="w-16 h-16 mx-auto mb-6 text-gray-400" />
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">No Campaigns Yet</h3>
+            <p className="text-gray-600 mb-6 max-w-md mx-auto">
+              Get started by creating your first outreach campaign. Build targeted sequences 
+              to engage your prospects effectively.
+            </p>
+            <Button
+              onClick={() => {
+                setView('create');
+                setEditingCampaignId(null);
+                setCampaignData({
+                  name: '',
+                  description: '',
+                  channel: '',
+                  style: '',
+                  prospectsListIds: [],
+                  selectedProspects: [],
+                  scheduling: {
+                    intervalType: 'one-time',
+                    selectedDays: [],
+                    time: '09:00',
+                    timezone: 'UTC'
+                  }
+                });
+                setCurrentStep(1);
+              }}
+              className="bg-gradient-to-r from-gray-900 to-gray-800 hover:from-gray-800 hover:to-gray-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+            >
+              <Plus className="w-5 h-5 mr-2" />
+              Create Your First Campaign
+            </Button>
+          </div>
+        ) : filteredCampaigns.length === 0 ? (
+          <div className="text-center py-16">
+            <Search className="w-16 h-16 mx-auto mb-6 text-gray-400" />
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">No campaigns found</h3>
+            <p className="text-gray-600 mb-6 max-w-md mx-auto">
+              No campaigns match your search criteria. Try adjusting your search terms or create a new campaign.
+            </p>
+            {campaignSearchQuery && (
+              <Button
+                variant="outline"
+                onClick={() => setCampaignSearchQuery('')}
+                className="mr-3 border-gray-300 text-gray-700 hover:bg-gray-50"
+              >
+                Clear search
+              </Button>
+            )}
+            <Button
+              onClick={() => {
+                setView('create');
+                setEditingCampaignId(null);
+                setCampaignData({
+                  name: '',
+                  description: '',
+                  channel: '',
+                  style: '',
+                  prospectsListIds: [],
+                  selectedProspects: [],
+                  scheduling: {
+                    intervalType: 'one-time',
+                    selectedDays: [],
+                    time: '09:00',
+                    timezone: 'UTC'
+                  }
+                });
+                setCurrentStep(1);
+              }}
+              className="bg-gradient-to-r from-gray-900 to-gray-800 hover:from-gray-800 hover:to-gray-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+            >
+              <Plus className="w-5 h-5 mr-2" />
+              Create New Campaign
+            </Button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredCampaigns.map((campaign) => (
+              <Card 
+                key={campaign.campaign_id} 
+                className="shadow-xl border border-gray-200 hover:shadow-2xl transform hover:scale-[1.02] transition-all duration-300 group cursor-pointer"
+                onClick={() => loadCampaignForEditing(campaign.campaign_id)}
+              >
+                <CardContent className="p-6">
+                  {/* Campaign Header */}
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-bold text-lg text-gray-900 truncate group-hover:text-gray-700 transition-colors">
+                          {campaign.campaign_name}
+                        </h3>
+                        <Edit3 className="w-4 h-4 text-gray-400 group-hover:text-gray-600 transition-colors opacity-0 group-hover:opacity-100" />
+                      </div>
+                      <p className="text-sm text-gray-600 line-clamp-2 mt-1">
+                        {campaign.description || 'No description'}
+                      </p>
+                    </div>
+                    <Badge 
+                      variant={campaign.status === 'active' ? 'default' : 'secondary'}
+                      className={`ml-2 flex-shrink-0 ${
+                        campaign.status === 'active' 
+                          ? 'bg-green-100 text-green-800 border-green-200 hover:bg-green-200' 
+                          : campaign.status === 'paused'
+                          ? 'bg-yellow-100 text-yellow-800 border-yellow-200 hover:bg-yellow-200'
+                          : campaign.status === 'completed'
+                          ? 'bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-200'
+                          : 'bg-gray-100 text-gray-800 border-gray-200 hover:bg-gray-200'
+                      }`}
+                    >
+                      {campaign.status}
+                    </Badge>
+                  </div>
+
+                  {/* Campaign Stats */}
+                  <div className="grid grid-cols-2 gap-3 mb-4">
+                    <div className="text-center p-2 bg-gray-50 rounded-lg border">
+                      <Users className="w-4 h-4 text-gray-600 mx-auto mb-1" />
+                      <p className="text-xs text-gray-600">Prospects</p>
+                      <p className="font-bold text-gray-900">{campaign.prospects_count}</p>
+                    </div>
+                    <div className="text-center p-2 bg-gray-50 rounded-lg border">
+                      <Activity className="w-4 h-4 text-gray-600 mx-auto mb-1" />
+                      <p className="text-xs text-gray-600">Channels</p>
+                      <p className="font-bold text-gray-900">{campaign.channels?.length || 0}</p>
+                    </div>
+                  </div>
+
+                  {/* Channels Display */}
+                  {campaign.channels && campaign.channels.length > 0 && (
+                    <div className="mb-4">
+                      <p className="text-xs font-medium text-gray-600 mb-2">Channels:</p>
+                      <div className="flex gap-2">
+                        {campaign.channels.map((channel) => (
+                          <div 
+                            key={channel.channel_id}
+                            className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs ${
+                              channel.enabled 
+                                ? 'bg-gray-900 text-white' 
+                                : 'bg-gray-100 text-gray-600'
+                            }`}
+                          >
+                            {channel.channel_id === 1 && <Mail className="w-3 h-3" />}
+                            {channel.channel_id === 2 && <Linkedin className="w-3 h-3" />}
+                            <span>{channel.name}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Campaign Dates */}
+                  <div className="text-xs text-gray-500 mb-4 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span>Created:</span>
+                      <span>{campaign.created_date}</span>
+                    </div>
+                    {campaign.date_started && (
+                      <div className="flex items-center justify-between">
+                        <span>Started:</span>
+                        <span>{new Date(campaign.date_started).toLocaleDateString()}</span>
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between">
+                      <span>Modified:</span>
+                      <span>{new Date(campaign.date_last_modified).toLocaleDateString()}</span>
+                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex gap-2">
+                    {campaign.status === 'draft' && (
+                      <Button
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleCampaignStatusChange(campaign.campaign_id, 'active');
+                        }}
+                        className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                        disabled={isLoading}
+                      >
+                        <Play className="w-3 h-3 mr-1" />
+                        Start
+                      </Button>
+                    )}
+                    
+                    {campaign.status === 'active' && (
+                      <Button
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleCampaignStatusChange(campaign.campaign_id, 'paused');
+                        }}
+                        className="flex-1 bg-yellow-600 hover:bg-yellow-700 text-white"
+                        disabled={isLoading}
+                      >
+                        <Pause className="w-3 h-3 mr-1" />
+                        Pause
+                      </Button>
+                    )}
+                    
+                    {campaign.status === 'paused' && (
+                      <>
+                        <Button
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleCampaignStatusChange(campaign.campaign_id, 'active');
+                          }}
+                          className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                          disabled={isLoading}
+                        >
+                          <Play className="w-3 h-3 mr-1" />
+                          Resume
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleCampaignStatusChange(campaign.campaign_id, 'completed');
+                          }}
+                          className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                          disabled={isLoading}
+                        >
+                          <Check className="w-3 h-3 mr-1" />
+                          Complete
+                        </Button>
+                      </>
+                    )}
+                    
+                    {(campaign.status === 'draft' || campaign.status === 'completed') && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteCampaign(campaign.campaign_id, campaign.campaign_name);
+                        }}
+                        className="flex-shrink-0 border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300"
+                        disabled={isLoading}
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
+    );
   };
 
   const renderStepContent = () => {
@@ -1135,31 +1936,6 @@ const Campaigns: React.FC = () => {
                 </div>
               </div>
 
-              {/* Confirm Schedule Button */}
-              <div className="pt-6">
-                <Button
-                  onClick={() => setScheduleConfirmed(true)}
-                  disabled={scheduleConfirmed || 
-                    (campaignData.scheduling.intervalType === 'specific' && campaignData.scheduling.selectedDays.length === 0)}
-                  className={`w-full py-4 text-lg font-medium transition-all duration-300 ${
-                    scheduleConfirmed
-                      ? 'bg-green-600 text-white shadow-lg'
-                      : 'bg-gradient-to-r from-gray-900 to-gray-800 hover:from-gray-800 hover:to-gray-700 text-white shadow-md hover:shadow-lg transform hover:scale-105'
-                  }`}
-                >
-                  {scheduleConfirmed ? (
-                    <>
-                      <Check className="w-5 h-5 mr-2" />
-                      Schedule Confirmed
-                    </>
-                  ) : (
-                    <>
-                      <Calendar className="w-5 h-5 mr-2" />
-                      Confirm Schedule
-                    </>
-                  )}
-                </Button>
-              </div>
             </div>
           </div>
         );
@@ -1324,117 +2100,159 @@ const Campaigns: React.FC = () => {
             <div className="p-2 bg-white rounded-lg">
               <Target className="h-6 w-6 text-gray-900" />
             </div>
-            <h1 className="text-3xl font-bold">Campaign Builder</h1>
+            <h1 className="text-3xl font-bold">
+              {view === 'list' ? 'Campaign Management' : editingCampaignId ? 'Edit Campaign' : 'Campaign Builder'}
+            </h1>
           </div>
           <p className="text-gray-300 text-lg max-w-2xl">
-            Create and manage targeted outreach campaigns with precision. Build multi-channel strategies 
-            to engage your prospects effectively.
+            {view === 'list' 
+              ? 'Manage your outreach campaigns and track their performance across multiple channels.'
+              : 'Create and configure targeted outreach campaigns with precision. Build multi-channel strategies to engage your prospects effectively.'
+            }
           </p>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-
-        {/* Progress Steps */}
-        <Card className="mb-8 shadow-xl border border-gray-200 hover:shadow-2xl transform hover:scale-[1.01] transition-all duration-300">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              {STEPS.map((step, index) => {
-                const Icon = step.icon;
-                const isCompleted = isStepComplete(step.id);
-                const isCurrent = currentStep === step.id;
-                const canAccess = canProceedToStep(step.id);
-                
-                return (
-                  <React.Fragment key={step.id}>
-                    <div 
-                      className={`flex flex-col items-center cursor-pointer transition-all duration-200 ${
-                        canAccess ? 'hover:scale-105' : 'opacity-50 cursor-not-allowed'
-                      }`}
-                      onClick={() => canAccess && setCurrentStep(step.id)}
-                    >
-                      <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-2 transition-all duration-200 shadow-md hover:shadow-lg ${
-                        isCurrent 
-                          ? 'bg-gray-900 text-white shadow-xl' 
-                          : isCompleted 
-                          ? 'bg-gray-50 text-gray-900 shadow-lg border-2 border-gray-900' 
-                          : 'bg-gray-200 text-gray-500'
-                      }`}>
-                        {isCompleted ? (
-                          <CheckCircle className="w-6 h-6" />
-                        ) : (
-                          <Icon className="w-6 h-6" />
-                        )}
-                      </div>
-                      <span className={`text-sm font-medium text-center ${
-                        isCurrent ? 'text-gray-900' : isCompleted ? 'text-gray-900' : 'text-gray-500'
-                      }`}>
-                        {step.name}
-                      </span>
-                    </div>
+        {view === 'list' ? (
+          renderCampaignsList()
+        ) : (
+          <>
+            {/* Progress Steps */}
+            <Card className="mb-8 shadow-xl border border-gray-200 hover:shadow-2xl transform hover:scale-[1.01] transition-all duration-300">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  {STEPS.map((step, index) => {
+                    const Icon = step.icon;
+                    const isCompleted = isStepComplete(step.id);
+                    const isCurrent = currentStep === step.id;
+                    const canAccess = canProceedToStep(step.id);
                     
-                    {index < STEPS.length - 1 && (
-                      <div className={`flex-1 h-0.5 mx-4 transition-all duration-200 ${
-                        isStepComplete(step.id) ? 'bg-gray-900' : 'bg-gray-300'
-                      }`} />
+                    return (
+                      <React.Fragment key={step.id}>
+                        <div 
+                          className={`flex flex-col items-center cursor-pointer transition-all duration-200 ${
+                            canAccess ? 'hover:scale-105' : 'opacity-50 cursor-not-allowed'
+                          }`}
+                          onClick={() => canAccess && setCurrentStep(step.id)}
+                        >
+                          <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-2 transition-all duration-200 shadow-md hover:shadow-lg ${
+                            isCurrent 
+                              ? 'bg-gray-900 text-white shadow-xl' 
+                              : isCompleted 
+                              ? 'bg-gray-50 text-gray-900 shadow-lg border-2 border-gray-900' 
+                              : 'bg-gray-200 text-gray-500'
+                          }`}>
+                            {isCompleted ? (
+                              <CheckCircle className="w-6 h-6" />
+                            ) : (
+                              <Icon className="w-6 h-6" />
+                            )}
+                          </div>
+                          <span className={`text-sm font-medium text-center ${
+                            isCurrent ? 'text-gray-900' : isCompleted ? 'text-gray-900' : 'text-gray-500'
+                          }`}>
+                            {step.name}
+                          </span>
+                        </div>
+                        
+                        {index < STEPS.length - 1 && (
+                          <div className={`flex-1 h-0.5 mx-4 transition-all duration-200 ${
+                            isStepComplete(step.id) ? 'bg-gray-900' : 'bg-gray-300'
+                          }`} />
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Step Content */}
+            <Card className="mb-8 shadow-xl border border-gray-200 hover:shadow-2xl transform hover:scale-[1.01] transition-all duration-300">
+              <CardContent className="p-8">
+                {renderStepContent()}
+              </CardContent>
+            </Card>
+
+            {/* Navigation Buttons */}
+            <div className="flex justify-between">
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={prevStep}
+                  disabled={currentStep === 1}
+                  className="shadow-xl hover:shadow-2xl transition-all duration-300 border-gray-300 text-gray-900 hover:bg-gray-50 transform hover:scale-105"
+                >
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Previous
+                </Button>
+                
+                <Button
+                  onClick={() => {
+                    setView('list');
+                    setEditingCampaignId(null); // Reset editing state when going back
+                  }}
+                  className="bg-white hover:bg-gray-50 text-gray-900 border border-gray-300 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105"
+                >
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Back to Campaigns
+                </Button>
+              </div>
+              
+              <div className="flex gap-2">
+                {/* Save Draft Button - Always available */}
+                <Button
+                  onClick={saveDraft}
+                  disabled={isLoading || !campaignData.name.trim()}
+                  variant="outline"
+                  className="border-gray-900 text-gray-900 hover:bg-gray-900 hover:text-white shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105"
+                >
+                  {isLoading ? (
+                    <>
+                      <div className="w-4 h-4 mr-2 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <FileText className="w-4 h-4" />
+                      Save Draft
+                    </>
+                  )}
+                </Button>
+
+                {currentStep === STEPS.length ? (
+                  <Button
+                    onClick={createCampaign}
+                    disabled={isLoading || !isStepComplete(currentStep)}
+                    className="bg-gradient-to-r from-gray-800 to-gray-900 hover:from-gray-900 hover:to-black text-white shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105"
+                  >
+                    {isLoading ? (
+                      <>
+                        <div className="w-4 h-4 mr-2 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        {editingCampaignId ? 'Updating...' : 'Creating...'}
+                      </>
+                    ) : (
+                      <>
+                        <Send className="w-4 h-4 mr-2" />
+                        {editingCampaignId ? 'Update Campaign' : 'Launch Campaign'}
+                      </>
                     )}
-                  </React.Fragment>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Step Content */}
-        <Card className="mb-8 shadow-xl border border-gray-200 hover:shadow-2xl transform hover:scale-[1.01] transition-all duration-300">
-          <CardContent className="p-8">
-            {renderStepContent()}
-          </CardContent>
-        </Card>
-
-        {/* Navigation Buttons */}
-        <div className="flex justify-between">
-          <Button
-            variant="outline"
-            onClick={prevStep}
-            disabled={currentStep === 1}
-            className="shadow-xl hover:shadow-2xl transition-all duration-300 border-gray-300 text-gray-900 hover:bg-gray-50 transform hover:scale-105"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Previous
-          </Button>
-          
-          <div className="flex gap-3">
-            {currentStep === STEPS.length ? (
-              <Button
-                onClick={createCampaign}
-                disabled={isLoading || !isStepComplete(currentStep)}
-                className="bg-gradient-to-r from-gray-800 to-gray-900 hover:from-gray-900 hover:to-black text-white shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105"
-              >
-                {isLoading ? (
-                  <>
-                    <div className="w-4 h-4 mr-2 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    Creating...
-                  </>
+                  </Button>
                 ) : (
-                  <>
-                    <Send className="w-4 h-4 mr-2" />
-                    Launch Campaign
-                  </>
+                  <Button
+                    onClick={nextStep}
+                    disabled={!isStepComplete(currentStep)}
+                    className="bg-gradient-to-r from-gray-800 to-gray-900 hover:from-gray-900 hover:to-black text-white shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105"
+                  >
+                    Next
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </Button>
                 )}
-              </Button>
-            ) : (
-              <Button
-                onClick={nextStep}
-                disabled={!isStepComplete(currentStep)}
-                className="bg-gradient-to-r from-gray-800 to-gray-900 hover:from-gray-900 hover:to-black text-white shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105"
-              >
-                Next
-                <ArrowRight className="w-4 h-4 ml-2" />
-              </Button>
-            )}
-          </div>
-        </div>
+              </div>
+            </div>
+          </>
+        )}
 
         {/* Coming Soon Popup */}
         {showComingSoonPopup && (
@@ -1473,6 +2291,61 @@ const Campaigns: React.FC = () => {
             </Card>
           </div>
         )}
+
+        {/* Delete Confirmation Dialog */}
+        <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-3 text-red-600">
+                <Trash2 className="w-5 h-5" />
+                Delete Campaign
+              </DialogTitle>
+              <DialogDescription className="text-gray-600">
+                This action cannot be undone. This will permanently delete the campaign and all associated data.
+              </DialogDescription>
+            </DialogHeader>
+            
+            {campaignToDelete && (
+              <div className="py-4">
+                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                  <h4 className="font-semibold text-gray-900 mb-1">Campaign to delete:</h4>
+                  <p className="text-gray-700 font-medium">"{campaignToDelete.name}"</p>
+                </div>
+              </div>
+            )}
+
+            <DialogFooter className="flex gap-3">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowDeleteDialog(false);
+                  setCampaignToDelete(null);
+                }}
+                disabled={isLoading}
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={confirmDeleteCampaign}
+                disabled={isLoading}
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+              >
+                {isLoading ? (
+                  <>
+                    <div className="w-4 h-4 mr-2 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Delete Campaign
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

@@ -36,6 +36,10 @@ from base_models import (
     CreateProspectsListResponse, AddProspectsRequest, AddProspectsResponse,
     ProspectsListByIdResponse, DeleteProspectsListResponse, RemoveProspectResponse,
     AddCustomLeadRequest, AddCustomLeadResponse,
+    # Campaign models
+    CampaignChannel, CampaignMailStyle, CampaignAnalytics, CampaignData,
+    CreateCampaignRequest, CreateCampaignResponse, UpdateCampaignRequest, UpdateCampaignResponse,
+    CampaignsResponse, CampaignByIdResponse, DeleteCampaignResponse,
     # Common models
     LogoutResponse
 )
@@ -48,6 +52,7 @@ from csv_database import CSVUserDatabase
 from search_history_manager import SearchHistoryManager
 from prospects_list_manager import ProspectsListManager
 from mail_lists_manager import MailListsManager
+from campaigns_manager import CampaignManager
 from studio import generate_multiple_emails, refine_email_content
 
 TOKENS_FOLDER="tokens"
@@ -60,6 +65,7 @@ csv_db = CSVUserDatabase(tokens_folder=TOKENS_FOLDER, redis_manager=RedisManager
 search_history_manager = SearchHistoryManager()  # Initialize search history manager
 prospects_list_manager = ProspectsListManager()  # Initialize prospects list manager
 mail_lists_manager = MailListsManager()  # Initialize mail lists manager
+campaign_manager = CampaignManager()  # Initialize campaign manager
 scheduler = BackgroundScheduler(timezone="UTC")
 scheduler.start()
 
@@ -2175,6 +2181,367 @@ async def update_all_session_templates(session_id: str, request: Request):
     except Exception as e:
         print(f"❌ Error updating all session templates: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to update all session templates: {str(e)}")
+
+# ============ CAMPAIGN ENDPOINTS ============
+
+@app.get("/api/campaigns", response_model=CampaignsResponse)
+async def get_campaigns(request: Request):
+    """Get all campaigns for the authenticated user"""
+    try:
+        print(f"\n📋 API REQUEST: GET_CAMPAIGNS")
+        
+        # Get session_id from request headers
+        session_id = request.headers.get('X-Session-ID')
+        
+        if not session_id:
+            raise HTTPException(status_code=401, detail="No session ID provided. Please authenticate first.")
+        
+        # Get user info from token file or Redis
+        user_info = None
+        token_file = user_manager.get_user_token_file(session_id)
+        
+        if token_file:
+            user_info = user_manager.get_user_info_from_token_file(token_file)
+        
+        if not user_info:
+            # Check Redis for session data
+            auth_data = RedisManager.get_session_data(session_id)
+            if auth_data:
+                user_info = auth_data
+            else:
+                raise HTTPException(status_code=401, detail="No valid session found. Please authenticate first.")
+        
+        user_email = user_info.get('email')
+        if not user_email:
+            raise HTTPException(status_code=400, detail="User email not found in session data")
+        
+        print(f"📝 API Parameters: user_email={user_email}")
+        
+        # Get campaigns from campaign manager
+        campaigns = campaign_manager.get_user_campaigns(user_email)
+        
+        print(f"✅ Retrieved {len(campaigns)} campaigns for {user_email}")
+        
+        return {
+            "success": True,
+            "user_email": user_email,
+            "total_campaigns": len(campaigns),
+            "campaigns": campaigns
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Error getting campaigns: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get campaigns: {str(e)}")
+
+@app.post("/api/campaigns", response_model=CreateCampaignResponse)
+async def create_campaign(create_campaign_request: CreateCampaignRequest, request: Request):
+    """Create a new campaign"""
+    try:
+        print(f"\n➕ API REQUEST: CREATE_CAMPAIGN")
+        
+        # Get session_id from request headers
+        session_id = request.headers.get('X-Session-ID')
+        
+        if not session_id:
+            raise HTTPException(status_code=401, detail="No session ID provided. Please authenticate first.")
+        
+        # Get user info from token file or Redis
+        user_info = None
+        token_file = user_manager.get_user_token_file(session_id)
+        
+        if token_file:
+            user_info = user_manager.get_user_info_from_token_file(token_file)
+        
+        if not user_info:
+            # Check Redis for session data
+            auth_data = RedisManager.get_session_data(session_id)
+            if auth_data:
+                user_info = auth_data
+            else:
+                raise HTTPException(status_code=401, detail="No valid session found. Please authenticate first.")
+        
+        user_email = user_info.get('email')
+        if not user_email:
+            raise HTTPException(status_code=400, detail="User email not found in session data")
+        
+        print(f"📝 API Parameters:")
+        print(f"   user_email: {user_email}")
+        print(f"   campaign_name: {create_campaign_request.campaign_name}")
+        print(f"   description: {create_campaign_request.description}")
+        print(f"   channels: {create_campaign_request.channels}")
+        print(f"   mail_styles: {create_campaign_request.mail_styles}")
+        
+        # Convert Pydantic models to dicts for the campaign manager
+        channels = [channel.dict() for channel in create_campaign_request.channels] if create_campaign_request.channels else None
+        mail_styles = [style.dict() for style in create_campaign_request.mail_styles] if create_campaign_request.mail_styles else None
+        
+        # Create campaign
+        campaign_id = campaign_manager.create_campaign(
+            user_email=user_email,
+            campaign_name=create_campaign_request.campaign_name,
+            description=create_campaign_request.description,
+            channels=channels,
+            mail_styles=mail_styles,
+            prospects_list_id=create_campaign_request.prospects_list_id,
+            prospects_count=create_campaign_request.prospects_count or 0
+        )
+        
+        if not campaign_id:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Campaign name '{create_campaign_request.campaign_name}' already exists. Please choose a different name."
+            )
+        
+        print(f"✅ Created campaign: {campaign_id} for {user_email}")
+        
+        return {
+            "success": True,
+            "campaign_id": campaign_id,
+            "message": "Campaign created successfully"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Error creating campaign: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to create campaign: {str(e)}")
+
+@app.get("/api/campaigns/{campaign_id}", response_model=CampaignByIdResponse)
+async def get_campaign_by_id(campaign_id: str, request: Request):
+    """Get specific campaign by ID"""
+    try:
+        print(f"\n📋 API REQUEST: GET_CAMPAIGN_BY_ID")
+        
+        # Get session_id from request headers
+        session_id = request.headers.get('X-Session-ID')
+        
+        if not session_id:
+            raise HTTPException(status_code=401, detail="No session ID provided. Please authenticate first.")
+        
+        # Get user info from token file or Redis
+        user_info = None
+        token_file = user_manager.get_user_token_file(session_id)
+        
+        if token_file:
+            user_info = user_manager.get_user_info_from_token_file(token_file)
+        
+        if not user_info:
+            # Check Redis for session data
+            auth_data = RedisManager.get_session_data(session_id)
+            if auth_data:
+                user_info = auth_data
+            else:
+                raise HTTPException(status_code=401, detail="No valid session found. Please authenticate first.")
+        
+        user_email = user_info.get('email')
+        if not user_email:
+            raise HTTPException(status_code=400, detail="User email not found in session data")
+        
+        print(f"📝 API Parameters: user_email={user_email}, campaign_id={campaign_id}")
+        
+        # Get campaign by ID
+        campaign = campaign_manager.get_campaign_by_id(user_email, campaign_id)
+        
+        if not campaign:
+            raise HTTPException(status_code=404, detail="Campaign not found")
+        
+        print(f"✅ Retrieved campaign: {campaign_id} for {user_email}")
+        
+        return {
+            "success": True,
+            "campaign": campaign
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Error getting campaign: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get campaign: {str(e)}")
+
+@app.put("/api/campaigns/{campaign_id}", response_model=UpdateCampaignResponse)
+async def update_campaign(campaign_id: str, update_campaign_request: UpdateCampaignRequest, request: Request):
+    """Update a campaign"""
+    try:
+        print(f"\n✏️ API REQUEST: UPDATE_CAMPAIGN")
+        
+        # Get session_id from request headers
+        session_id = request.headers.get('X-Session-ID')
+        
+        if not session_id:
+            raise HTTPException(status_code=401, detail="No session ID provided. Please authenticate first.")
+        
+        # Get user info from token file or Redis
+        user_info = None
+        token_file = user_manager.get_user_token_file(session_id)
+        
+        if token_file:
+            user_info = user_manager.get_user_info_from_token_file(token_file)
+        
+        if not user_info:
+            # Check Redis for session data
+            auth_data = RedisManager.get_session_data(session_id)
+            if auth_data:
+                user_info = auth_data
+            else:
+                raise HTTPException(status_code=401, detail="No valid session found. Please authenticate first.")
+        
+        user_email = user_info.get('email')
+        if not user_email:
+            raise HTTPException(status_code=400, detail="User email not found in session data")
+        
+        print(f"📝 API Parameters: user_email={user_email}, campaign_id={campaign_id}")
+        
+        # Prepare updates dict
+        updates = {}
+        if update_campaign_request.campaign_name is not None:
+            updates['campaign_name'] = update_campaign_request.campaign_name
+        if update_campaign_request.description is not None:
+            updates['description'] = update_campaign_request.description
+        if update_campaign_request.channels is not None:
+            updates['channels'] = [channel.dict() for channel in update_campaign_request.channels]
+        if update_campaign_request.mail_styles is not None:
+            updates['mail_styles'] = [style.dict() for style in update_campaign_request.mail_styles]
+        if update_campaign_request.prospects_list_id is not None:
+            updates['prospects_list_id'] = update_campaign_request.prospects_list_id
+        if update_campaign_request.prospects_count is not None:
+            updates['prospects_count'] = update_campaign_request.prospects_count
+        if update_campaign_request.status is not None:
+            updates['status'] = update_campaign_request.status
+        
+        # Update campaign
+        success = campaign_manager.update_campaign(user_email, campaign_id, updates)
+        
+        if not success:
+            # Check if it's a duplicate name error
+            if 'campaign_name' in updates and campaign_manager._check_campaign_name_exists(user_email, updates['campaign_name'], exclude_campaign_id=campaign_id):
+                raise HTTPException(
+                    status_code=400, 
+                    detail=f"Campaign name '{updates['campaign_name']}' already exists. Please choose a different name."
+                )
+            else:
+                raise HTTPException(status_code=404, detail="Campaign not found or failed to update")
+        
+        print(f"✅ Updated campaign: {campaign_id} for {user_email}")
+        
+        return {
+            "success": True,
+            "campaign_id": campaign_id,
+            "message": "Campaign updated successfully"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Error updating campaign: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to update campaign: {str(e)}")
+
+@app.delete("/api/campaigns/{campaign_id}", response_model=DeleteCampaignResponse)
+async def delete_campaign(campaign_id: str, request: Request):
+    """Delete a campaign"""
+    try:
+        print(f"\n🗑️ API REQUEST: DELETE_CAMPAIGN")
+        
+        # Get session_id from request headers
+        session_id = request.headers.get('X-Session-ID')
+        
+        if not session_id:
+            raise HTTPException(status_code=401, detail="No session ID provided. Please authenticate first.")
+        
+        # Get user info from token file or Redis
+        user_info = None
+        token_file = user_manager.get_user_token_file(session_id)
+        
+        if token_file:
+            user_info = user_manager.get_user_info_from_token_file(token_file)
+        
+        if not user_info:
+            # Check Redis for session data
+            auth_data = RedisManager.get_session_data(session_id)
+            if auth_data:
+                user_info = auth_data
+            else:
+                raise HTTPException(status_code=401, detail="No valid session found. Please authenticate first.")
+        
+        user_email = user_info.get('email')
+        if not user_email:
+            raise HTTPException(status_code=400, detail="User email not found in session data")
+        
+        print(f"📝 API Parameters: user_email={user_email}, campaign_id={campaign_id}")
+        
+        # Delete campaign
+        success = campaign_manager.delete_campaign(user_email, campaign_id)
+        
+        if not success:
+            raise HTTPException(status_code=404, detail="Campaign not found or failed to delete")
+        
+        print(f"✅ Deleted campaign: {campaign_id} for {user_email}")
+        
+        return {
+            "success": True,
+            "campaign_id": campaign_id,
+            "message": "Campaign deleted successfully"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Error deleting campaign: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to delete campaign: {str(e)}")
+
+@app.post("/api/campaigns/{campaign_id}/start", response_model=UpdateCampaignResponse)
+async def start_campaign(campaign_id: str, request: Request):
+    """Start a campaign (change status from draft to active)"""
+    try:
+        print(f"\n▶️ API REQUEST: START_CAMPAIGN")
+        
+        # Get session_id from request headers
+        session_id = request.headers.get('X-Session-ID')
+        
+        if not session_id:
+            raise HTTPException(status_code=401, detail="No session ID provided. Please authenticate first.")
+        
+        # Get user info from token file or Redis
+        user_info = None
+        token_file = user_manager.get_user_token_file(session_id)
+        
+        if token_file:
+            user_info = user_manager.get_user_info_from_token_file(token_file)
+        
+        if not user_info:
+            # Check Redis for session data
+            auth_data = RedisManager.get_session_data(session_id)
+            if auth_data:
+                user_info = auth_data
+            else:
+                raise HTTPException(status_code=401, detail="No valid session found. Please authenticate first.")
+        
+        user_email = user_info.get('email')
+        if not user_email:
+            raise HTTPException(status_code=400, detail="User email not found in session data")
+        
+        print(f"📝 API Parameters: user_email={user_email}, campaign_id={campaign_id}")
+        
+        # Start campaign
+        success = campaign_manager.start_campaign(user_email, campaign_id)
+        
+        if not success:
+            raise HTTPException(status_code=404, detail="Campaign not found or failed to start")
+        
+        print(f"✅ Started campaign: {campaign_id} for {user_email}")
+        
+        return {
+            "success": True,
+            "campaign_id": campaign_id,
+            "message": "Campaign started successfully"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Error starting campaign: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to start campaign: {str(e)}")
 
 
 if __name__ == "__main__":

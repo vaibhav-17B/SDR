@@ -1,0 +1,83 @@
+{
+  "list_id": "list-eee4e75f",
+  "list_name": "L2",
+  "description": null,
+  "created_date": "2025-08-08",
+  "created_time": "23:31",
+  "last_updated": "2025-08-11 13:39:15",
+  "mail_type": null,
+  "status": "draft",
+  "user_email": "vaibhav@basalanalytics.com",
+  "templates": [
+    {
+      "template_id": "initial_mail",
+      "template_name": "Initial Email",
+      "subject": "",
+      "body": "",
+      "cc": "",
+      "bcc": "",
+      "created_date": "2025-08-11",
+      "last_updated": "2025-08-11"
+    },
+    {
+      "template_id": "follow_up_1",
+      "template_name": "Follow Up 1",
+      "subject": "",
+      "body": "",
+      "cc": "",
+      "bcc": "",
+      "created_date": "2025-08-11",
+      "last_updated": "2025-08-11"
+    },
+    {
+      "template_id": "follow_up_2",
+      "template_name": "Follow Up 2",
+      "subject": "",
+      "body": "",
+      "cc": "",
+      "bcc": "",
+      "created_date": "2025-08-11",
+      "last_updated": "2025-08-11"
+    },
+    {
+      "template_id": "follow_up_3",
+      "template_name": "Follow Up 3",
+      "subject": "",
+      "body": "",
+      "cc": "",
+      "bcc": "",
+      "created_date": "2025-08-11",
+      "last_updated": "2025-08-11"
+    },
+    {
+      "template_id": "reply_interested",
+      "template_name": "Reply Interested",
+      "subject": "",
+      "body": "",
+      "cc": "",
+      "bcc": "",
+      "created_date": "2025-08-11",
+      "last_updated": "2025-08-11"
+    },
+    {
+      "template_id": "reply_not_interested",
+      "template_name": "Reply Not Interested",
+      "subject": "",
+      "body": "",
+      "cc": "",
+      "bcc": "",
+      "created_date": "2025-08-11",
+      "last_updated": "2025-08-11"
+    },
+    {
+      "template_id": "reply_meeting_requested",
+      "template_name": "Reply Meeting Requested",
+      "subject": "Confirming Our Upcoming Meeting",
+      "body": "Dear [Prospect's Name],\n\nThank you for expressing interest in scheduling a meeting to discuss [specific topic or product/service]. I am pleased to confirm the meeting details as follows:\n\n**Date:** [Insert Date]  \n**Time:** [Insert Time]  \n**Location/Platform:** [Insert Location or Virtual Meeting Link]\n\nDuring our conversation, I aim to address your questions and explore how [your company/product/service] can support your goals in [specific area or need]. Please let me know if there are any specific points you'd like us to prioritize during the discussion.\n\nShould you need to reschedule or require any additional information beforehand, feel free to reach out.\n\nLooking forward to our conversation.\n\nBest regards,  \n[Your Full Name]  \n[Your Position]  \n[Your Company]  \n[Your Contact Information]",
+      "cc": "",
+      "bcc": "",
+      "created_date": "2025-08-11",
+      "last_updated": "2025-08-11"
+    }
+  ]
+}
