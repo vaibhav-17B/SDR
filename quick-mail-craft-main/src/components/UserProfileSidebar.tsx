@@ -143,25 +143,25 @@ const UserProfileSidebar = ({ userData, sessionId, onProfileUpdate, onLogout }: 
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="sm" className="flex items-center space-x-2">
+          <Button variant="ghost" size="sm" className="flex items-center space-x-2 shadow-md hover:shadow-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-0.5 hover:ring-2 hover:ring-gray-400/40 hover:bg-gray-50">
             <User className="w-4 h-4" />
             <span className="hidden md:inline">{userData.name || userData.email}</span>
             <Settings className="w-4 h-4" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-56">
-          <DropdownMenuItem onClick={handleChangeProfile} className="flex items-center space-x-2">
+        <DropdownMenuContent align="end" className="w-56 shadow-xl border border-gray-200">
+          <DropdownMenuItem onClick={handleChangeProfile} className="flex items-center space-x-2 hover:bg-slate-100 hover:shadow-sm transition-all duration-200 cursor-pointer">
             <Edit3 className="w-4 h-4" />
             <span>Change Profile</span>
           </DropdownMenuItem>
           <DropdownMenuItem 
             onClick={() => setShowDeleteConfirmDialog(true)} 
-            className="flex items-center space-x-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+            className="flex items-center space-x-2 text-red-600 hover:text-red-700 hover:bg-red-50 hover:shadow-sm transition-all duration-200 cursor-pointer"
           >
             <Trash2 className="w-4 h-4" />
             <span>Delete Profile</span>
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={onLogout} className="flex items-center space-x-2">
+          <DropdownMenuItem onClick={onLogout} className="flex items-center space-x-2 hover:bg-slate-100 hover:shadow-sm transition-all duration-200 cursor-pointer">
             <LogOut className="w-4 h-4" />
             <span>Logout</span>
           </DropdownMenuItem>

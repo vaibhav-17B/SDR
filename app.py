@@ -35,6 +35,7 @@ from base_models import (
     ProspectData, ProspectsListItem, ProspectsListResponse, CreateProspectsListRequest,
     CreateProspectsListResponse, AddProspectsRequest, AddProspectsResponse,
     ProspectsListByIdResponse, DeleteProspectsListResponse, RemoveProspectResponse,
+    AddCustomLeadRequest, AddCustomLeadResponse,
     # Common models
     LogoutResponse
 )
@@ -1650,6 +1651,94 @@ async def remove_prospect_from_list(list_id: str, prospect_index: int, request: 
     except Exception as e:
         print(f"❌ Error removing prospect from list: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to remove prospect from list: {str(e)}")
+
+@app.post("/api/prospects-lists/{list_id}/custom-lead", response_model=AddCustomLeadResponse)
+async def add_custom_lead_to_list(list_id: str, add_custom_lead_request: AddCustomLeadRequest, request: Request):
+    """Add a custom lead to an existing prospects list"""
+    try:
+        # Get session_id from request headers
+        session_id = request.headers.get('X-Session-ID')
+        
+        if not session_id:
+            raise HTTPException(status_code=401, detail="No session ID provided. Please authenticate first.")
+        
+        # Get user info from token file or Redis
+        user_info = None
+        token_file = user_manager.get_user_token_file(session_id)
+        
+        if token_file:
+            user_info = user_manager.get_user_info_from_token_file(token_file)
+        
+        if not user_info:
+            # Check Redis for session data
+            auth_data = RedisManager.get_session_data(session_id)
+            if auth_data:
+                user_info = auth_data
+            else:
+                raise HTTPException(status_code=401, detail="No valid session found. Please authenticate first.")
+        
+        user_email = user_info.get('email')
+        if not user_email:
+            raise HTTPException(status_code=400, detail="User email not found in session data")
+        
+        # Get custom lead data from request
+        custom_lead = add_custom_lead_request.custom_lead
+        
+        if not custom_lead:
+            raise HTTPException(status_code=400, detail="No custom lead data provided")
+        
+        # Validate required fields
+        required_fields = ['personal_information', 'current_position', 'contact_information']
+        missing_fields = []
+        
+        for field in required_fields:
+            if field not in custom_lead:
+                missing_fields.append(field)
+        
+        if missing_fields:
+            raise HTTPException(status_code=400, detail=f"Missing required fields: {', '.join(missing_fields)}")
+        
+        # Validate specific required data
+        personal_info = custom_lead.get('personal_information', {})
+        current_position = custom_lead.get('current_position', {})
+        contact_info = custom_lead.get('contact_information', {})
+        
+        if not personal_info.get('full_name'):
+            raise HTTPException(status_code=400, detail="Full name is required in personal_information")
+        
+        if not current_position.get('title'):
+            raise HTTPException(status_code=400, detail="Position title is required in current_position")
+        
+        if not contact_info.get('primary_email'):
+            raise HTTPException(status_code=400, detail="Email is required in contact_information")
+        
+        print(f"\n➕ API REQUEST: ADD_CUSTOM_LEAD_TO_LIST for {user_email}")
+        print(f"List ID: {list_id}")
+        print(f"Custom Lead: {personal_info.get('full_name')} ({contact_info.get('primary_email')})")
+        
+        # Add custom lead to list
+        success = prospects_list_manager.add_custom_lead_to_list(
+            user_email=user_email,
+            list_id=list_id,
+            custom_lead=custom_lead
+        )
+        
+        if not success:
+            raise HTTPException(status_code=404, detail="List not found or failed to add custom lead (email may already exist)")
+        
+        print(f"✅ Added custom lead to list: {list_id} for {user_email}")
+        
+        return {
+            "success": True,
+            "list_id": list_id,
+            "message": "Custom lead added to list successfully"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Error adding custom lead to list: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to add custom lead to list: {str(e)}")
 
 # ============ MAIL SESSIONS ENDPOINTS ============
 

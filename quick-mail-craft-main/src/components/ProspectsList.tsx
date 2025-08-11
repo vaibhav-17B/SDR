@@ -5,7 +5,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { ChevronDown, ChevronUp, List, Users, Trash2, Edit2, Plus, Calendar, AlertTriangle, User, Mail, MoreVertical, Search, X } from 'lucide-react';
+import { Label } from '@/components/ui/label';
+import { ChevronDown, ChevronUp, List, Users, Trash2, Edit2, Plus, Calendar, AlertTriangle, User, Mail, MoreVertical, Search, X, UserPlus, Briefcase } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { toast } from '@/components/ui/sonner';
 import { API_CONFIG } from '@/config/api';
@@ -28,6 +29,19 @@ interface ProspectsListItem {
   tags: string[];
 }
 
+interface AdditionalInfo {
+  id: string;
+  label: string;
+  value: string;
+}
+
+interface CustomLeadData {
+  name: string;
+  position: string;
+  email: string;
+  additionalInfo: AdditionalInfo[];
+}
+
 interface ProspectsListProps {
   onSelectProspectsForNewList?: (prospects: Lead[]) => void;
 }
@@ -46,6 +60,15 @@ const ProspectsList: React.FC<ProspectsListProps> = ({ onSelectProspectsForNewLi
   const [prospectDeleteConfirmOpen, setProspectDeleteConfirmOpen] = useState(false);
   const [prospectToDelete, setProspectToDelete] = useState<{listId: string, prospectIndex: number, prospectName: string} | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isCustomLeadDialogOpen, setIsCustomLeadDialogOpen] = useState(false);
+  const [selectedListForCustomLead, setSelectedListForCustomLead] = useState<string | null>(null);
+  const [customLeadData, setCustomLeadData] = useState<CustomLeadData>({
+    name: '',
+    position: '',
+    email: '',
+    additionalInfo: []
+  });
+  const [isAddingCustomLead, setIsAddingCustomLead] = useState(false);
 
   useEffect(() => {
     fetchProspectsLists();
@@ -203,6 +226,164 @@ const ProspectsList: React.FC<ProspectsListProps> = ({ onSelectProspectsForNewLi
     await deleteProspectFromList(prospectToDelete.listId, prospectToDelete.prospectIndex);
     setProspectDeleteConfirmOpen(false);
     setProspectToDelete(null);
+  };
+
+  // Custom lead management functions
+  const addAdditionalInfo = () => {
+    const newId = Date.now().toString();
+    const newInfo: AdditionalInfo = {
+      id: newId,
+      label: `Additional info ${customLeadData.additionalInfo.length + 1}`,
+      value: ''
+    };
+    setCustomLeadData(prev => ({
+      ...prev,
+      additionalInfo: [...prev.additionalInfo, newInfo]
+    }));
+  };
+
+  const updateAdditionalInfoLabel = (id: string, label: string) => {
+    setCustomLeadData(prev => ({
+      ...prev,
+      additionalInfo: prev.additionalInfo.map(info => 
+        info.id === id ? { ...info, label } : info
+      )
+    }));
+  };
+
+  const updateAdditionalInfoValue = (id: string, value: string) => {
+    setCustomLeadData(prev => ({
+      ...prev,
+      additionalInfo: prev.additionalInfo.map(info => 
+        info.id === id ? { ...info, value } : info
+      )
+    }));
+  };
+
+  const deleteAdditionalInfo = (id: string) => {
+    setCustomLeadData(prev => ({
+      ...prev,
+      additionalInfo: prev.additionalInfo.filter(info => info.id !== id)
+    }));
+  };
+
+  const resetCustomLeadForm = () => {
+    setCustomLeadData({
+      name: '',
+      position: '',
+      email: '',
+      additionalInfo: []
+    });
+    setSelectedListForCustomLead(null);
+  };
+
+  const handleOpenCustomLeadDialog = (listId: string) => {
+    setSelectedListForCustomLead(listId);
+    setIsCustomLeadDialogOpen(true);
+  };
+
+  const handleCloseCustomLeadDialog = () => {
+    setIsCustomLeadDialogOpen(false);
+    resetCustomLeadForm();
+  };
+
+  const addCustomLeadToList = async () => {
+    if (!customLeadData.name.trim() || !customLeadData.position.trim() || !customLeadData.email.trim()) {
+      toast.error('Please fill in all required fields (Name, Position, Email)');
+      return;
+    }
+
+    if (!selectedListForCustomLead) {
+      toast.error('No list selected');
+      return;
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(customLeadData.email.trim())) {
+      toast.error('Please enter a valid email address');
+      return;
+    }
+
+    console.log('\n➕ FRONTEND API CALL: ADD_CUSTOM_LEAD_TO_LIST');
+    console.log('📝 API Parameters:', {
+      endpoint: 'POST /api/prospects-lists/{list_id}/custom-lead',
+      listId: selectedListForCustomLead,
+      leadData: customLeadData
+    });
+    
+    try {
+      setIsAddingCustomLead(true);
+      const sessionId = getSessionId();
+      
+      if (!sessionId) {
+        console.log('❌ API ERROR: No session ID found');
+        toast.error('Authentication required');
+        return;
+      }
+
+      // Format the custom lead data to match the expected Lead interface
+      const customLead = {
+        personal_information: {
+          full_name: customLeadData.name.trim(),
+          primary_professional_email: customLeadData.email.trim()
+        },
+        current_position: {
+          title: customLeadData.position.trim()
+        },
+        contact_information: {
+          primary_email: customLeadData.email.trim()
+        },
+        // Add additional info as custom fields
+        custom_fields: customLeadData.additionalInfo.reduce((acc, info) => {
+          if (info.label.trim() && info.value.trim()) {
+            acc[info.label.trim()] = info.value.trim();
+          }
+          return acc;
+        }, {} as {[key: string]: string})
+      };
+
+      const apiUrl = `${API_CONFIG.BASE_URL}/api/prospects-lists/${selectedListForCustomLead}/custom-lead`;
+      console.log('🌐 Making add request to:', apiUrl);
+
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'ngrok-skip-browser-warning': 'true',
+          'X-Session-ID': sessionId
+        },
+        body: JSON.stringify({
+          custom_lead: customLead
+        })
+      });
+
+      console.log('📡 Add response status:', response.status, response.statusText);
+
+      if (!response.ok) {
+        console.log('❌ API ERROR: Add request failed with status:', response.status);
+        const errorData = await response.json().catch(() => ({ detail: 'Unknown error occurred' }));
+        throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log('✅ API SUCCESS: ADD_CUSTOM_LEAD_TO_LIST');
+      console.log('📤 Add response data:', {
+        success: data.success,
+        message: data.message
+      });
+      
+      if (data.success) {
+        toast.success('Custom lead added successfully');
+        handleCloseCustomLeadDialog();
+        await fetchProspectsLists(); // Refresh the lists
+      }
+    } catch (error) {
+      console.error('❌ API ERROR: addCustomLeadToList failed:', error);
+      toast.error(`Failed to add custom lead: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsAddingCustomLead(false);
+    }
   };
 
   const deleteProspectFromList = async (listId: string, prospectIndex: number) => {
@@ -549,7 +730,11 @@ const ProspectsList: React.FC<ProspectsListProps> = ({ onSelectProspectsForNewLi
             {filteredProspectsLists.map((listItem) => (
               <Card 
                 key={listItem.list_id} 
-                className="border border-gray-200 hover:border-gray-900 hover:bg-slate-100 transition-all duration-300 shadow-lg hover:shadow-xl bg-white cursor-pointer transform hover:scale-[1.01]"
+                className={`border transition-all duration-300 shadow-lg cursor-pointer transform hover:scale-[1.01] ${
+                  expandedList === listItem.list_id 
+                    ? 'border-gray-900 bg-slate-100 shadow-xl' 
+                    : 'border-gray-200 hover:border-gray-900 hover:bg-slate-100 bg-white hover:shadow-xl'
+                }`}
                 onClick={() => setExpandedList(expandedList === listItem.list_id ? null : listItem.list_id)}
               >
                 <CardContent className="p-6">
@@ -604,9 +789,39 @@ const ProspectsList: React.FC<ProspectsListProps> = ({ onSelectProspectsForNewLi
                     
                     <CollapsibleContent className="mt-4" onClick={(e) => e.stopPropagation()}>
                       <div className="bg-gray-50 p-4 rounded-lg border max-h-96 overflow-y-auto">
-                        <h5 className="text-sm font-medium text-gray-700 mb-4">Prospects in this list:</h5>
+                        <div className="flex items-center justify-between mb-4">
+                          <h5 className="text-sm font-medium text-gray-700">Prospects in this list:</h5>
+                          <Button
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenCustomLeadDialog(listItem.list_id);
+                            }}
+                            className="bg-gradient-to-r from-gray-900 to-gray-800 hover:from-gray-800 hover:to-gray-700 text-white shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-1 ring-2 ring-gray-500/20 hover:ring-gray-400/40 font-medium text-xs px-3 py-1.5"
+                          >
+                            <UserPlus className="w-3 h-3 mr-1" />
+                            Add Custom Lead
+                          </Button>
+                        </div>
                         {listItem.prospects.length === 0 ? (
-                          <p className="text-sm text-gray-500 italic">No prospects in this list yet.</p>
+                          <div className="text-center py-6">
+                            <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                              <Users className="w-6 h-6 text-gray-400" />
+                            </div>
+                            <p className="text-sm text-gray-500 italic mb-3">No prospects in this list yet.</p>
+                            <Button
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenCustomLeadDialog(listItem.list_id);
+                              }}
+                              variant="outline"
+                              className="border-gray-300 text-gray-700 hover:bg-slate-100 hover:border-gray-900 hover:shadow-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-1 text-xs"
+                            >
+                              <UserPlus className="w-3 h-3 mr-1" />
+                              Add Your First Lead
+                            </Button>
+                          </div>
                         ) : (
                           <div className="space-y-3">
                             {listItem.prospects.map((prospect, index) => (
@@ -741,6 +956,164 @@ const ProspectsList: React.FC<ProspectsListProps> = ({ onSelectProspectsForNewLi
                 <Trash2 className="w-4 h-4 mr-1" />
                 Remove Prospect
               </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Custom Lead Dialog */}
+      <Dialog open={isCustomLeadDialogOpen} onOpenChange={setIsCustomLeadDialogOpen}>
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center text-gray-900">
+              <UserPlus className="w-5 h-5 mr-2" />
+              Add Custom Lead
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-6">
+            {/* Required Fields */}
+            <div className="space-y-4">
+              <h3 className="text-sm font-semibold text-gray-900 border-b border-gray-200 pb-2">Required Information</h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="custom-lead-name" className="text-sm font-medium text-gray-700">
+                    Full Name *
+                  </Label>
+                  <Input
+                    id="custom-lead-name"
+                    value={customLeadData.name}
+                    onChange={(e) => setCustomLeadData(prev => ({ ...prev, name: e.target.value }))}
+                    placeholder="e.g., John Smith"
+                    className={`w-full transition-colors duration-200 ${
+                      customLeadData.name.trim() 
+                        ? 'bg-[#E8F0FE] border-[#E8F0FE] focus:border-[#E8F0FE] focus:ring-[#E8F0FE]' 
+                        : 'border-gray-300 focus:border-gray-900 focus:ring-gray-900'
+                    }`}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="custom-lead-position" className="text-sm font-medium text-gray-700">
+                    Position *
+                  </Label>
+                  <Input
+                    id="custom-lead-position"
+                    value={customLeadData.position}
+                    onChange={(e) => setCustomLeadData(prev => ({ ...prev, position: e.target.value }))}
+                    placeholder="e.g., Marketing Director"
+                    className={`w-full transition-colors duration-200 ${
+                      customLeadData.position.trim() 
+                        ? 'bg-[#E8F0FE] border-[#E8F0FE] focus:border-[#E8F0FE] focus:ring-[#E8F0FE]' 
+                        : 'border-gray-300 focus:border-gray-900 focus:ring-gray-900'
+                    }`}
+                  />
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="custom-lead-email" className="text-sm font-medium text-gray-700">
+                  Email Address *
+                </Label>
+                <Input
+                  id="custom-lead-email"
+                  type="email"
+                  value={customLeadData.email}
+                  onChange={(e) => setCustomLeadData(prev => ({ ...prev, email: e.target.value }))}
+                  placeholder="e.g., john.smith@company.com"
+                  className={`w-full transition-colors duration-200 ${
+                    customLeadData.email.trim() 
+                      ? 'bg-[#E8F0FE] border-[#E8F0FE] focus:border-[#E8F0FE] focus:ring-[#E8F0FE]' 
+                      : 'border-gray-300 focus:border-gray-900 focus:ring-gray-900'
+                  }`}
+                />
+              </div>
+            </div>
+
+            {/* Additional Information Section */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between border-b border-gray-200 pb-2">
+                <h3 className="text-sm font-semibold text-gray-900">Additional Information</h3>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={addAdditionalInfo}
+                  className="bg-gradient-to-r from-gray-900 to-gray-800 hover:from-gray-800 hover:to-gray-700 text-white shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-1 ring-2 ring-gray-500/20 hover:ring-gray-400/40 font-medium text-xs px-3 py-2"
+                >
+                  <Plus className="w-3 h-3 mr-1" />
+                  Add Detail
+                </Button>
+              </div>
+              
+              {customLeadData.additionalInfo.length === 0 ? (
+                <div className="text-center py-4 border-2 border-dashed border-gray-200 rounded-lg">
+                  <Briefcase className="w-8 h-8 mx-auto mb-2 text-gray-400" />
+                  <p className="text-sm text-gray-500">No additional information yet</p>
+                  <p className="text-xs text-gray-400 mt-1">Click "Add Detail" to include custom fields</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {customLeadData.additionalInfo.map((info) => (
+                    <div key={info.id} className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                      <div className="flex items-center justify-between mb-3">
+                        <Input
+                          value={info.label}
+                          onChange={(e) => updateAdditionalInfoLabel(info.id, e.target.value)}
+                          placeholder="Field name (e.g., Company, Phone, LinkedIn)"
+                          className="flex-1 mr-3 text-sm font-medium bg-white border-gray-300 focus:border-gray-900 focus:ring-gray-900"
+                        />
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => deleteAdditionalInfo(info.id)}
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200 hover:border-red-300 px-2 py-1"
+                        >
+                          <X className="w-3 h-3" />
+                        </Button>
+                      </div>
+                      <Input
+                        value={info.value}
+                        onChange={(e) => updateAdditionalInfoValue(info.id, e.target.value)}
+                        placeholder="Enter value..."
+                        className="w-full text-sm bg-white border-gray-300 focus:border-gray-900 focus:ring-gray-900"
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            
+            {/* Form Actions */}
+            <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+              <Button
+                variant="outline"
+                onClick={handleCloseCustomLeadDialog}
+                className="border-gray-300 text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={addCustomLeadToList}
+                disabled={isAddingCustomLead || !customLeadData.name.trim() || !customLeadData.position.trim() || !customLeadData.email.trim()}
+                className="bg-gradient-to-r from-gray-900 to-gray-800 hover:from-gray-800 hover:to-gray-700 text-white shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-1 ring-2 ring-gray-500/20 hover:ring-gray-400/40 font-medium"
+              >
+                {isAddingCustomLead ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Adding...
+                  </>
+                ) : (
+                  <>
+                    <UserPlus className="w-4 h-4 mr-2" />
+                    Add Lead
+                  </>
+                )}
+              </Button>
+            </div>
+            
+            <div className="text-xs text-gray-500 bg-gray-50 p-3 rounded border border-gray-200">
+              <strong>Note:</strong> Fields marked with * are required. Additional information fields are optional and can be used for custom data like company details, phone numbers, social profiles, etc.
             </div>
           </div>
         </DialogContent>

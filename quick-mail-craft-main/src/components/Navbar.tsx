@@ -99,12 +99,12 @@ const Navbar = ({ userEmail, isAuthenticated, onSignOut }: NavbarProps) => {
   };
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 shadow-xl">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 shadow-xl hover:shadow-2xl transition-shadow duration-300">
       <div className="w-full px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16 max-w-none">
           <div className="flex items-center space-x-8 flex-shrink-0">
             <div className="flex-shrink-0 mr-8">
-              <Link to="/" className="text-xl font-bold text-gray-900">
+              <Link to="/" className="text-xl font-bold text-gray-900 hover:text-gray-700 transition-colors duration-200 hover:drop-shadow-sm">
                 SDR Platform
               </Link>
             </div>
@@ -112,10 +112,10 @@ const Navbar = ({ userEmail, isAuthenticated, onSignOut }: NavbarProps) => {
               <Link to="/">
                 <Button 
                   variant="ghost"
-                  className={`flex items-center space-x-2 shadow-md hover:shadow-lg transition-shadow duration-300 ${
+                  className={`flex items-center space-x-2 shadow-md hover:shadow-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-0.5 ${
                     isActive('/') 
-                      ? 'bg-gray-900 text-white shadow-lg' 
-                      : 'border-gray-300 text-gray-900 hover:bg-gray-900 hover:text-white'
+                      ? 'bg-gray-900 text-white shadow-xl ring-2 ring-gray-500/20' 
+                      : 'border-gray-300 text-gray-900 hover:bg-gray-900 hover:text-white hover:ring-2 hover:ring-gray-400/40'
                   }`}
                 >
                   <Home className="w-4 h-4" />
@@ -125,10 +125,10 @@ const Navbar = ({ userEmail, isAuthenticated, onSignOut }: NavbarProps) => {
               <Link to="/prospects">
                 <Button 
                   variant="ghost"
-                  className={`flex items-center space-x-2 shadow-md hover:shadow-lg transition-shadow duration-300 ${
+                  className={`flex items-center space-x-2 shadow-md hover:shadow-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-0.5 ${
                     isActive('/prospects')
-                      ? 'bg-gray-900 text-white shadow-lg' 
-                      : 'border-gray-300 text-gray-900 hover:bg-gray-900 hover:text-white'
+                      ? 'bg-gray-900 text-white shadow-xl ring-2 ring-gray-500/20' 
+                      : 'border-gray-300 text-gray-900 hover:bg-gray-900 hover:text-white hover:ring-2 hover:ring-gray-400/40'
                   }`}
                 >
                   <Search className="w-4 h-4" />
@@ -138,10 +138,10 @@ const Navbar = ({ userEmail, isAuthenticated, onSignOut }: NavbarProps) => {
               <Link to="/studio">
                 <Button 
                   variant="ghost"
-                  className={`flex items-center space-x-2 shadow-md hover:shadow-lg transition-shadow duration-300 ${
+                  className={`flex items-center space-x-2 shadow-md hover:shadow-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-0.5 ${
                     isActive('/studio')
-                      ? 'bg-gray-900 text-white shadow-lg' 
-                      : 'border-gray-300 text-gray-900 hover:bg-gray-900 hover:text-white'
+                      ? 'bg-gray-900 text-white shadow-xl ring-2 ring-gray-500/20' 
+                      : 'border-gray-300 text-gray-900 hover:bg-gray-900 hover:text-white hover:ring-2 hover:ring-gray-400/40'
                   }`}
                 >
                   <Mail className="w-4 h-4" />
@@ -151,10 +151,10 @@ const Navbar = ({ userEmail, isAuthenticated, onSignOut }: NavbarProps) => {
               <Link to="/campaigns">
                 <Button 
                   variant="ghost"
-                  className={`flex items-center space-x-2 shadow-md hover:shadow-lg transition-shadow duration-300 ${
+                  className={`flex items-center space-x-2 shadow-md hover:shadow-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-0.5 ${
                     isActive('/campaigns')
-                      ? 'bg-gray-900 text-white shadow-lg' 
-                      : 'border-gray-300 text-gray-900 hover:bg-gray-900 hover:text-white'
+                      ? 'bg-gray-900 text-white shadow-xl ring-2 ring-gray-500/20' 
+                      : 'border-gray-300 text-gray-900 hover:bg-gray-900 hover:text-white hover:ring-2 hover:ring-gray-400/40'
                   }`}
                 >
                   <Target className="w-4 h-4" />
@@ -177,7 +177,7 @@ const Navbar = ({ userEmail, isAuthenticated, onSignOut }: NavbarProps) => {
               <Link to="/user-info">
                 <Button 
                   variant="outline"
-                  className="border-gray-300 text-gray-900 hover:bg-gray-50 shadow-md hover:shadow-lg transition-shadow duration-300"
+                  className="border-gray-300 text-gray-900 hover:bg-gray-50 shadow-md hover:shadow-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-0.5 hover:ring-2 hover:ring-gray-400/40"
                 >
                   Get Started
                 </Button>

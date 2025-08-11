@@ -264,6 +264,16 @@ class RemoveProspectResponse(BaseModel):
     list_id: str
     message: str
 
+class AddCustomLeadRequest(BaseModel):
+    """Request model for adding custom lead to list"""
+    custom_lead: dict
+
+class AddCustomLeadResponse(BaseModel):
+    """Response model for adding custom lead to list"""
+    success: bool
+    list_id: str
+    message: str
+
 # ============ LOGOUT MODEL ============
 
 class LogoutResponse(BaseModel):

@@ -289,6 +289,72 @@ class ProspectsListManager:
             print(f"❌ Error renaming prospects list: {str(e)}")
             return False
     
+    def add_custom_lead_to_list(self, user_email: str, list_id: str, custom_lead: Dict) -> bool:
+        """Add a custom lead to an existing list"""
+        try:
+            csv_path = self._get_csv_file_path(user_email)
+            
+            if not os.path.exists(csv_path):
+                return False
+            
+            # Read CSV to find the list
+            df = pd.read_csv(csv_path)
+            target_row = df[df['list_id'] == list_id]
+            
+            if target_row.empty:
+                print(f"❌ List {list_id} not found for {user_email}")
+                return False
+            
+            # Load existing prospects
+            json_path = target_row.iloc[0]['prospects_json_path']
+            existing_data = {}
+            
+            if pd.notna(json_path) and os.path.exists(json_path):
+                with open(json_path, 'r', encoding='utf-8') as f:
+                    existing_data = json.load(f)
+            
+            # Get existing prospects
+            existing_prospects = existing_data.get('prospects', [])
+            
+            # Check for duplicate email
+            new_email = self._extract_email_from_prospect(custom_lead)
+            if new_email:
+                existing_emails = set()
+                for prospect in existing_prospects:
+                    email = self._extract_email_from_prospect(prospect)
+                    if email:
+                        existing_emails.add(email.lower())
+                
+                if new_email.lower() in existing_emails:
+                    print(f"⚠️ Lead with email {new_email} already exists in list {list_id}")
+                    return False
+            
+            # Add the custom lead
+            existing_prospects.append(custom_lead)
+            
+            # Update JSON file
+            updated_data = {
+                **existing_data,
+                'prospects': existing_prospects,
+                'total_count': len(existing_prospects),
+                'last_updated': datetime.now().isoformat()
+            }
+            
+            with open(json_path, 'w', encoding='utf-8') as f:
+                json.dump(updated_data, f, indent=2, ensure_ascii=False)
+            
+            # Update CSV
+            df.loc[df['list_id'] == list_id, 'total_prospects'] = len(existing_prospects)
+            df.loc[df['list_id'] == list_id, 'last_updated'] = datetime.now().isoformat()
+            df.to_csv(csv_path, index=False)
+            
+            print(f"✅ Added custom lead to list {list_id} for {user_email}")
+            return True
+            
+        except Exception as e:
+            print(f"❌ Error adding custom lead to list: {str(e)}")
+            return False
+
     def remove_prospect_from_list(self, user_email: str, list_id: str, prospect_index: int) -> bool:
         """Remove a prospect from a list by index"""
         try:

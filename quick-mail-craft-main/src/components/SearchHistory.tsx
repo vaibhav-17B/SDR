@@ -316,29 +316,28 @@ const SearchHistory: React.FC<SearchHistoryProps> = ({ onLoadSearch, onRefreshRe
 
   return (
     <Card className="border-gray-200 shadow-xl hover:shadow-2xl transition-shadow duration-300">
-      <CardHeader className="pb-3 px-6 pt-6">
-        <Collapsible open={showHistory} onOpenChange={setShowHistory}>
-          <CollapsibleTrigger asChild>
-            <div className={`w-full flex justify-between items-center cursor-pointer p-3 rounded-lg transition-all duration-300 ${
-              showHistory ? 'bg-gray-900 border border-gray-900' : 'hover:bg-slate-100 hover:border-gray-900 border border-gray-200'
+      <Collapsible open={showHistory} onOpenChange={setShowHistory}>
+        <CollapsibleTrigger asChild>
+          <div className={`w-full flex justify-between items-center cursor-pointer p-4 transition-all duration-300 ${
+            showHistory ? 'bg-gray-900 border border-gray-900' : 'hover:bg-slate-100 hover:border-gray-900 border border-gray-200'
+          }`}>
+            <CardTitle className={`text-lg font-semibold flex items-center transition-colors duration-200 ${
+              showHistory ? 'text-white' : 'text-gray-900'
             }`}>
-              <CardTitle className={`text-lg font-semibold flex items-center transition-colors duration-200 ${
-                showHistory ? 'text-white' : 'text-gray-900'
-              }`}>
-                <History className={`w-5 h-5 mr-2 transition-colors duration-200 ${
-                  showHistory ? 'text-gray-200' : 'text-gray-600'
-                }`} />
-                Search History ({searchHistory.length})
-              </CardTitle>
-              {showHistory ? 
-                <ChevronUp className="w-4 h-4 text-gray-200 transition-colors duration-200" /> : 
-                <ChevronDown className="w-4 h-4 text-gray-600 transition-colors duration-200" />
-              }
-            </div>
-          </CollapsibleTrigger>
-          
-          <CollapsibleContent className="mt-4">
-            <CardContent className="pt-0 space-y-4">
+              <History className={`w-5 h-5 mr-2 transition-colors duration-200 ${
+                showHistory ? 'text-gray-200' : 'text-gray-600'
+              }`} />
+              Search History ({searchHistory.length})
+            </CardTitle>
+            {showHistory ? 
+              <ChevronUp className="w-4 h-4 text-gray-200 transition-colors duration-200" /> : 
+              <ChevronDown className="w-4 h-4 text-gray-600 transition-colors duration-200" />
+            }
+          </div>
+        </CollapsibleTrigger>
+        
+        <CollapsibleContent>
+          <div className="p-4 space-y-4">
               {isLoading ? (
                 <div className="text-center py-4">
                   <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-900 mx-auto"></div>
@@ -423,25 +422,39 @@ const SearchHistory: React.FC<SearchHistoryProps> = ({ onLoadSearch, onRefreshRe
                       </CollapsibleTrigger>
                         
                       <CollapsibleContent className="px-4 pb-4">
-                        <div className="bg-gray-50 p-3 rounded border mt-2">
-                          <h5 className="text-xs font-medium text-gray-700 mb-2">Search Parameters:</h5>
-                          <div className="grid grid-cols-1 gap-1">
-                            {formatSearchParams(historyItem.search_params).map((param, index) => (
-                              <div key={index} className="text-xs text-gray-600">
-                                • {param}
-                              </div>
-                            ))}
+                        <div className="bg-gradient-to-br from-gray-50 to-white p-3 rounded-lg border border-gray-200 shadow-sm mt-3">
+                          <div className="flex items-center mb-2">
+                            <Search className="w-3 h-3 text-gray-500 mr-1.5" />
+                            <h5 className="text-xs font-semibold text-gray-800">Search Parameters</h5>
                           </div>
+                          <div className="flex flex-wrap gap-2">
+                            {formatSearchParams(historyItem.search_params).map((param, index) => {
+                              const [label, value] = param.split(': ');
+                              return (
+                                <div key={index} className="inline-flex items-center bg-white px-2 py-1.5 rounded-md border border-gray-200 shadow-sm hover:shadow-md transition-all duration-200 hover:scale-[1.02]">
+                                  <div className="w-1.5 h-1.5 bg-gray-400 rounded-full mr-1.5 flex-shrink-0"></div>
+                                  <div className="text-xs">
+                                    <span className="font-medium text-gray-700">{label}:</span>
+                                    <span className="text-gray-600 ml-1">{value}</span>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                          {formatSearchParams(historyItem.search_params).length === 0 && (
+                            <div className="text-center py-2">
+                              <div className="text-xs text-gray-500 italic">No search parameters available</div>
+                            </div>
+                          )}
                         </div>
                       </CollapsibleContent>
                     </Collapsible>
                   </div>
                 ))
               )}
-            </CardContent>
-          </CollapsibleContent>
-        </Collapsible>
-      </CardHeader>
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
