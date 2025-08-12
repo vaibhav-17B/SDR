@@ -1,11 +1,11 @@
 {
-  "campaign_id": "campaign_20250811_182423",
-  "campaign_name": "Test_1",
-  "description": "Test",
-  "created_timestamp": "2025-08-11T18:24:23.448452",
+  "campaign_id": "campaign_20250812_115048",
+  "campaign_name": "Test",
+  "description": "test",
+  "created_timestamp": "2025-08-12T11:50:48.763440",
   "date_started": null,
-  "date_last_modified": "2025-08-11T18:37:57.087359",
-  "status": "completed",
+  "date_last_modified": "2025-08-12T11:50:48.763440",
+  "status": "draft",
   "channels": [
     {
       "channel_id": 1,

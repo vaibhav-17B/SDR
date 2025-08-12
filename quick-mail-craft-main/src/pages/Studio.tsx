@@ -405,7 +405,17 @@ const Studio = ({ onAuthChange }: StudioProps) => {
 
   // Email generation handlers
   const handleGenerateEmail = async (params: any, test: boolean = false) => {
-    await generateEmailContent(params, test);
+    // Include user details in the params for better email generation
+    const paramsWithUserDetails = {
+      ...params,
+      user_name: userData?.full_name,
+      user_email: userData?.email,
+      user_company: userData?.company_name,
+      user_designation: userData?.designation,
+      user_experience: userData?.experience
+    };
+    
+    await generateEmailContent(paramsWithUserDetails, test);
     setIsGenerationDialogOpen(false);
   };
 
@@ -741,6 +751,7 @@ const Studio = ({ onAuthChange }: StudioProps) => {
         onGenerate={handleGenerateEmail}
         isGenerating={isGenerating}
         emailSections={emailSections}
+        activeSection={activeSection}
       />
     </div>
   );

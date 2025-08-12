@@ -30,7 +30,10 @@ client = AzureOpenAI(
     
 # ---------- Dynamic Email Generator ----------
 
-async def generate_multiple_emails(mail_types: List[str], tone: str, description: str, additional_requirements: str = "") -> Dict[str, EmailContent]:
+async def generate_multiple_emails(mail_types: List[str], tone: str, description: str, additional_requirements: str = "", 
+                                  user_name: Optional[str] = None, user_email: Optional[str] = None, 
+                                  user_company: Optional[str] = None, user_designation: Optional[str] = None, 
+                                  user_experience: Optional[str] = None) -> Dict[str, EmailContent]:
     """
     Dynamically generate multiple emails based on the mail_types list from frontend
     Returns a dictionary where keys are mail_types and values are email content
@@ -66,17 +69,34 @@ Email Type Guidelines:
 
 Write professional, compelling emails that get responses while maintaining authenticity."""
 
+    # Build user details section
+    user_details = ""
+    if user_name or user_email or user_company or user_designation or user_experience:
+        user_details = "\n\nSender Details for your context:"
+        if user_name:
+            user_details += f"\n- Name: {user_name}"
+        if user_designation:
+            user_details += f"\n- Title/Designation: {user_designation}"
+        if user_company:
+            user_details += f"\n- Company: {user_company}"
+        if user_experience:
+            user_details += f"\n- Experience: {user_experience} years"
+        if user_email:
+            user_details += f"\n- Email: {user_email}"
+        user_details += "\n\nPlease include appropriate professional signature/footer in each email using these details."
+
     # Build user prompt
     user_prompt = f"""Generate {len(mail_types)} professional emails with the following specifications:
 
 Email Types Requested: {', '.join(mail_types)}
 Tone: {tone}
 Description/Context: {description}
-Additional Requirements: {additional_requirements}
+Additional Requirements: {additional_requirements}{user_details}
 
 For each email type, provide:
 1. An compelling subject line
 2. A professional email body that matches the type and tone
+3. Include professional email signature/footer with sender details if provided
 
 IMPORTANT: Return the response in JSON format where the keys are EXACTLY the email type names I provided: {mail_types}
 Do NOT change the key names. Use the exact strings: {', '.join(mail_types)}

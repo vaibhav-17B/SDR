@@ -9,6 +9,11 @@ interface EmailGenerationParams {
   description: string;
   tone: string;
   additional_requirements: string;
+  user_name?: string;
+  user_email?: string;
+  user_company?: string;
+  user_designation?: string;
+  user_experience?: string | number;
 }
 
 interface EmailContent {

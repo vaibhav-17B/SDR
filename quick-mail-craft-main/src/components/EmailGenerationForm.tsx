@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -24,15 +24,30 @@ interface EmailGenerationFormProps {
   onGenerate: (params: EmailGenerationParams) => void;
   isGenerating: boolean;
   emailSections: EmailSection[];
+  activeSection?: string;
 }
 
-const EmailGenerationForm = ({ onGenerate, isGenerating, emailSections }: EmailGenerationFormProps) => {
+const EmailGenerationForm = ({ onGenerate, isGenerating, emailSections, activeSection }: EmailGenerationFormProps) => {
   const [params, setParams] = useState<EmailGenerationParams>({
     mail_types: [],
     description: '',
     tone: '',
     additional_requirements: ''
   });
+
+  // Auto-select active template when dialog opens
+  useEffect(() => {
+    if (activeSection && emailSections.length > 0) {
+      const activeTemplate = emailSections.find(section => section.id === activeSection);
+      if (activeTemplate) {
+        const apiFormat = convertToApiFormat(activeTemplate.name);
+        setParams(prev => ({
+          ...prev,
+          mail_types: prev.mail_types.includes(apiFormat) ? prev.mail_types : [apiFormat]
+        }));
+      }
+    }
+  }, [activeSection, emailSections]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -78,6 +93,25 @@ const EmailGenerationForm = ({ onGenerate, isGenerating, emailSections }: EmailG
     }
   };
 
+  const handleSelectAll = () => {
+    const allApiFormats = emailSections.map(section => convertToApiFormat(section.name));
+    const allSelected = allApiFormats.every(format => params.mail_types.includes(format));
+    
+    if (allSelected) {
+      // Deselect all
+      setParams(prev => ({
+        ...prev,
+        mail_types: []
+      }));
+    } else {
+      // Select all
+      setParams(prev => ({
+        ...prev,
+        mail_types: allApiFormats
+      }));
+    }
+  };
+
 
   const isFormValid = params.tone && params.mail_types.length > 0 && params.description;
 
@@ -89,11 +123,22 @@ const EmailGenerationForm = ({ onGenerate, isGenerating, emailSections }: EmailG
             <Mail className="w-4 h-4" />
             Email Template Selection *
           </Label>
-          {params.mail_types.length > 0 && (
-            <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
-              {params.mail_types.length} selected
-            </span>
-          )}
+          <div className="flex items-center gap-2">
+            {params.mail_types.length > 0 && (
+              <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                {params.mail_types.length} selected
+              </span>
+            )}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleSelectAll}
+              className="text-xs px-3 py-1 h-auto bg-white hover:bg-gray-50 border-gray-300 text-gray-600 hover:text-gray-800"
+            >
+              {emailSections.length > 0 && emailSections.map(section => convertToApiFormat(section.name)).every(format => params.mail_types.includes(format)) ? 'Deselect All' : 'Select All'}
+            </Button>
+          </div>
         </div>
         <div className="flex flex-wrap gap-2">
           {emailSections.map((section) => {

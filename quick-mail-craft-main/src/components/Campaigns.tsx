@@ -1595,14 +1595,14 @@ const Campaigns: React.FC = () => {
                   
                   return (
                     <div key={list.list_id} className="space-y-2">
-                      <div className={`relative cursor-pointer px-4 py-3 rounded-lg border transition-all duration-200 shadow-sm hover:shadow-md group ${
+                      <div className={`relative cursor-pointer px-3 py-2.5 rounded-lg border transition-all duration-200 shadow-sm hover:shadow-md group h-16 ${
                         selectionState === 'all' 
                           ? 'bg-slate-100 text-gray-900 shadow-xl border-gray-900'
                           : selectionState === 'partial'
                           ? 'bg-slate-50 text-gray-800 shadow-xl border-gray-700'
-                          : 'bg-white border-gray-200 hover:bg-slate-100 hover:border-gray-900 hover:shadow-xl transform hover:scale-[1.02]'
+                          : 'bg-white border-gray-200 hover:bg-slate-100 hover:border-gray-900 hover:shadow-xl transform hover:scale-[1.01]'
                       }`}>
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between h-full">
                           <div className="flex items-center gap-3 flex-1 min-w-0">
                             <div 
                               className="flex-shrink-0"
@@ -1611,7 +1611,7 @@ const Campaigns: React.FC = () => {
                                 handleListSelect(list.list_id);
                               }}
                             >
-                              <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all duration-200 ${
+                              <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-all duration-200 ${
                                 selectionState === 'all' 
                                   ? 'border-gray-900 bg-gray-900' 
                                   : selectionState === 'partial'
@@ -1619,10 +1619,10 @@ const Campaigns: React.FC = () => {
                                   : 'border-gray-300 group-hover:border-gray-900'
                               }`}>
                                 {selectionState === 'all' && (
-                                  <Check className="w-3 h-3 text-white" />
+                                  <Check className="w-2.5 h-2.5 text-white" />
                                 )}
                                 {selectionState === 'partial' && (
-                                  <div className="w-2 h-2 bg-white rounded-full" />
+                                  <div className="w-1.5 h-1.5 bg-white rounded-full" />
                                 )}
                               </div>
                             </div>
@@ -1630,33 +1630,40 @@ const Campaigns: React.FC = () => {
                               onClick={() => handleListToggle(list.list_id)}
                               className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer"
                             >
-                              <Users className={`w-5 h-5 flex-shrink-0 transition-colors duration-200 ${
+                              <Users className={`w-4 h-4 flex-shrink-0 transition-colors duration-200 ${
                                 selectionState === 'all' || selectionState === 'partial' ? 'text-gray-900' : 'text-gray-600'
                               }`} />
                               <div className="min-w-0 flex-1">
-                                <span className={`font-semibold text-base truncate block transition-colors duration-200 ${
-                                  selectionState === 'all' || selectionState === 'partial' ? 'text-gray-900' : 'text-gray-900'
-                                }`}>{list.list_name}</span>
-                                <p className={`text-sm truncate mt-1 transition-colors duration-200 ${
-                                  selectionState === 'all' || selectionState === 'partial' ? 'text-gray-700' : 'text-gray-600'
-                                }`}>{list.description}</p>
-                                <div className="flex items-center gap-2 mt-2">
-                                  <Badge variant="outline" className={`text-xs transition-colors duration-200 ${
+                                <div className="flex items-center gap-3">
+                                  <span className={`font-semibold text-sm truncate transition-colors duration-200 ${
+                                    selectionState === 'all' || selectionState === 'partial' ? 'text-gray-900' : 'text-gray-900'
+                                  }`}>{list.list_name}</span>
+                                  <Badge variant="outline" className={`text-xs flex-shrink-0 transition-colors duration-200 ${
                                     selectionState === 'all' || selectionState === 'partial' 
                                       ? 'border-gray-700 text-gray-900 bg-gray-200/50' 
                                       : 'border-gray-300 text-gray-700'
                                   }`}>
                                     {listProspectsCount} prospects
                                   </Badge>
-                                  {list.tags.map(tag => (
-                                    <Badge key={tag} variant="secondary" className={`text-xs transition-colors duration-200 ${
-                                      selectionState === 'all' || selectionState === 'partial' 
-                                        ? 'bg-gray-200/70 text-gray-900 border-gray-600' 
-                                        : 'bg-gray-200 text-gray-600'
-                                    }`}>
-                                      {tag}
-                                    </Badge>
-                                  ))}
+                                </div>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <p className={`text-xs truncate flex-1 transition-colors duration-200 ${
+                                    selectionState === 'all' || selectionState === 'partial' ? 'text-gray-700' : 'text-gray-600'
+                                  }`}>{list.description}</p>
+                                  <div className="flex items-center gap-1 flex-shrink-0">
+                                    {list.tags.slice(0, 2).map(tag => (
+                                      <Badge key={tag} variant="secondary" className={`text-xs transition-colors duration-200 ${
+                                        selectionState === 'all' || selectionState === 'partial' 
+                                          ? 'bg-gray-200/70 text-gray-900 border-gray-600' 
+                                          : 'bg-gray-200 text-gray-600'
+                                      }`}>
+                                        {tag}
+                                      </Badge>
+                                    ))}
+                                    {list.tags.length > 2 && (
+                                      <span className="text-xs text-gray-500">+{list.tags.length - 2}</span>
+                                    )}
+                                  </div>
                                 </div>
                               </div>
                             </div>
@@ -1665,14 +1672,14 @@ const Campaigns: React.FC = () => {
                             {selectionState === 'partial' && (
                               <span className={`text-xs px-2 py-1 rounded transition-colors duration-200 ${
                                 selectionState === 'all' || selectionState === 'partial' 
-                                  ? 'text-white bg-white/20' 
+                                  ? 'text-gray-800 bg-gray-200' 
                                   : 'text-gray-500 bg-gray-100'
                               }`}>
                                 {campaignData.selectedProspects.filter(email => list.prospects.map(p => getLeadDisplayEmail(p)).includes(email)).length}/{listProspectsCount}
                               </span>
                             )}
                             <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${
-                              selectionState === 'all' || selectionState === 'partial' ? 'text-white' : 'text-gray-500'
+                              selectionState === 'all' || selectionState === 'partial' ? 'text-gray-800' : 'text-gray-500'
                             } ${isExpanded ? 'rotate-180' : ''}`} />
                           </div>
                         </div>
@@ -1680,8 +1687,9 @@ const Campaigns: React.FC = () => {
 
                       {/* Individual Prospects */}
                       {isExpanded && (
-                        <div className="ml-8 space-y-2 max-h-64 overflow-y-auto bg-gray-50 rounded-lg p-3 border border-gray-200">
-                          {list.prospects.map((prospect, index) => {
+                        <div className="ml-8 space-y-2 bg-gray-50 rounded-lg p-3 border border-gray-200">
+                          <div className="max-h-80 overflow-y-auto space-y-2">
+                            {list.prospects.map((prospect, index) => {
                             const email = getLeadDisplayEmail(prospect);
                             const name = getLeadDisplayName(prospect);
                             const position = getLeadCurrentPosition(prospect);
@@ -1749,11 +1757,12 @@ const Campaigns: React.FC = () => {
                               </div>
                             );
                           })}
-                          {list.prospects.length === 0 && (
-                            <div className="text-center py-4 text-gray-500 text-sm">
-                              No prospects in this list
-                            </div>
-                          )}
+                            {list.prospects.length === 0 && (
+                              <div className="text-center py-4 text-gray-500 text-sm">
+                                No prospects in this list
+                              </div>
+                            )}
+                          </div>
                         </div>
                       )}
                     </div>

@@ -644,7 +644,12 @@ async def generate_email(request: EmailGenerationParams):
             mail_types=mail_types,
             tone=tone,
             description=description,
-            additional_requirements=additional_requirements
+            additional_requirements=additional_requirements,
+            user_name=request.user_name,
+            user_email=request.user_email,
+            user_company=request.user_company,
+            user_designation=request.user_designation,
+            user_experience=request.user_experience
         )
         
         print(f"[DEBUG] Successfully generated {len(generated_emails)} emails")

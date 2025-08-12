@@ -24,9 +24,10 @@ interface EmailGenerationDialogProps {
   onGenerate: (params: EmailGenerationParams) => void;
   isGenerating: boolean;
   emailSections: EmailSection[];
+  activeSection?: string;
 }
 
-const EmailGenerationDialog = ({ isOpen, onClose, onGenerate, isGenerating, emailSections }: EmailGenerationDialogProps) => {
+const EmailGenerationDialog = ({ isOpen, onClose, onGenerate, isGenerating, emailSections, activeSection }: EmailGenerationDialogProps) => {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl p-0 border-2 border-gray-900 rounded-xl shadow-2xl hover:shadow-3xl transition-shadow duration-300">
@@ -49,6 +50,7 @@ const EmailGenerationDialog = ({ isOpen, onClose, onGenerate, isGenerating, emai
             onGenerate={onGenerate}
             isGenerating={isGenerating}
             emailSections={emailSections}
+            activeSection={activeSection}
           />
         </div>
       </DialogContent>

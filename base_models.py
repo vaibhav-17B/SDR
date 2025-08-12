@@ -63,6 +63,11 @@ class EmailGenerationParams(BaseModel):
     description: str       # Description as string
     tone: str             # Tone as string
     additional_requirements: str  # Additional requirements as string
+    user_name: Optional[str] = None  # User's name for email footer
+    user_email: Optional[str] = None  # User's email for email footer
+    user_company: Optional[str] = None  # User's company name
+    user_designation: Optional[str] = None  # User's designation/title
+    user_experience: Optional[Union[str, float]] = None  # User's years of experience
 
 class EmailContent(BaseModel):
     """Individual email content model"""
