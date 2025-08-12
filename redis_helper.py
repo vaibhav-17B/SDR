@@ -21,10 +21,10 @@ class RedisSessionManager:
                 decode_responses=True
             )
             client.ping()
-            print("✅ Redis connection successful")
+            print("Redis connection successful")
             return client
         except Exception as e:
-            print(f"❌ Redis connection failed: {e}")
+            print(f"Redis connection failed: {e}")
             return None
 
     def store_oauth_state(self, state: str, expiry_minutes: int = 10):
@@ -37,10 +37,10 @@ class RedisSessionManager:
                 timedelta(minutes=expiry_minutes),
                 "valid"
             )
-            print(f"✅ OAuth state {state} stored in Redis")
+            print(f"OAuth state {state} stored in Redis")
             return True
         except Exception as e:
-            print(f"❌ Failed to store OAuth state in Redis: {e}")
+            print(f"Failed to store OAuth state in Redis: {e}")
             return False
 
     def verify_oauth_state(self, state: str):
@@ -51,11 +51,11 @@ class RedisSessionManager:
             key = f"oauth_state:{state}"
             if self.client.exists(key):
                 self.client.delete(key)
-                print(f"✅ OAuth state {state} verified and deleted")
+                print(f"OAuth state {state} verified and deleted")
                 return True
             return False
         except Exception as e:
-            print(f"❌ Failed to verify OAuth state in Redis: {e}")
+            print(f"Failed to verify OAuth state in Redis: {e}")
             return False
 
     def store_session_data(self, session_id: str, auth_data: dict, expiry_hours: int = 24):
@@ -69,10 +69,10 @@ class RedisSessionManager:
                 timedelta(hours=expiry_hours),
                 json.dumps(auth_data)
             )
-            print(f"✅ Session {session_id} stored in Redis")
+            print(f"Session {session_id} stored in Redis")
             return True
         except Exception as e:
-            print(f"❌ Failed to store session in Redis: {e}")
+            print(f"Failed to store session in Redis: {e}")
             return False
 
     def get_session_data(self, session_id: str):
@@ -83,7 +83,7 @@ class RedisSessionManager:
             data = self.client.get(f"session:{session_id}")
             return json.loads(data) if data else None
         except Exception as e:
-            print(f"❌ Failed to get session from Redis: {e}")
+            print(f"Failed to get session from Redis: {e}")
             return None
 
     def delete_session_data(self, session_id: str):
@@ -92,10 +92,10 @@ class RedisSessionManager:
 
         try:
             result = self.client.delete(f"session:{session_id}")
-            print(f"🗑️ Session {session_id} deleted from Redis")
+            print(f"Session {session_id} deleted from Redis")
             return result > 0
         except Exception as e:
-            print(f"❌ Failed to delete session from Redis: {e}")
+            print(f"Failed to delete session from Redis: {e}")
             return False
 
     def get_all_session_keys(self):
@@ -105,7 +105,7 @@ class RedisSessionManager:
         try:
             return self.client.keys("session:*")
         except Exception as e:
-            print(f"❌ Failed to get session keys from Redis: {e}")
+            print(f"Failed to get session keys from Redis: {e}")
             return []
 
     def get_all_oauth_state_keys(self):
@@ -115,7 +115,7 @@ class RedisSessionManager:
         try:
             return self.client.keys("oauth_state:*")
         except Exception as e:
-            print(f"❌ Failed to get OAuth state keys from Redis: {e}")
+            print(f"Failed to get OAuth state keys from Redis: {e}")
             return []
 
     def cleanup_expired_sessions(self):
@@ -132,8 +132,8 @@ class RedisSessionManager:
                 elif ttl == -2:
                     expired_count += 1
 
-            print(f"🧹 Cleaned up {expired_count} expired sessions")
+            print(f"Cleaned up {expired_count} expired sessions")
             return expired_count
         except Exception as e:
-            print(f"❌ Failed to cleanup expired sessions: {e}")
+            print(f"Failed to cleanup expired sessions: {e}")
             return 0

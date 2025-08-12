@@ -6,6 +6,7 @@ import os
 import json
 import secrets
 import time
+from datetime import datetime
 from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
 from google.auth.transport.requests import Request as GoogleRequest
@@ -54,9 +55,20 @@ from prospects_list_manager import ProspectsListManager
 from mail_lists_manager import MailListsManager
 from campaigns_manager import CampaignManager
 from studio import generate_multiple_emails, refine_email_content
+from logging_config import (
+    api_logger, log_requests_middleware
+)
+from logging_config import log_api_start as _log_api_start
+from logging_config import log_api_success as _log_api_success
+from logging_config import log_api_error as _log_api_error
+from logging_config import get_session_logger as _get_session_logger
+from logging_config import get_user_email_from_session as _get_user_email_from_session
 
 TOKENS_FOLDER="tokens"
 app = FastAPI()
+
+
+
 RedisManager=RedisSessionManager()
 lead_finder=LeadFinder(test=True)
 user_manager=UserManager(redis_client=RedisManager)
@@ -69,12 +81,33 @@ campaign_manager = CampaignManager()  # Initialize campaign manager
 scheduler = BackgroundScheduler(timezone="UTC")
 scheduler.start()
 
+# Create wrapper functions for logging that include the initialized managers
+def log_api_start(endpoint_name: str, details: str = "", session_id: str = None, user_email: str = None):
+    return _log_api_start(endpoint_name, details, session_id, user_email, RedisManager, user_manager, csv_db)
+
+def log_api_success(endpoint_name: str, details: str = "", session_id: str = None, user_email: str = None):
+    return _log_api_success(endpoint_name, details, session_id, user_email, RedisManager, user_manager, csv_db)
+
+def log_api_error(endpoint_name: str, error: str, details: str = "", session_id: str = None, user_email: str = None):
+    return _log_api_error(endpoint_name, error, details, session_id, user_email, RedisManager, user_manager, csv_db)
+
+def get_session_logger(session_id: str, user_email: str = None):
+    return _get_session_logger(session_id, user_email, RedisManager, user_manager, csv_db)
+
+def get_user_email_from_session(session_id: str):
+    return _get_user_email_from_session(session_id, RedisManager, user_manager, csv_db)
+
 
 ALLOWED_ORIGINS = [
     "https://preview--quick-mail-craft.lovable.app",
     "https://83152ddb1df0.ngrok-free.app",  
     "http://localhost:8080",                          
 ]
+
+# Add request logging middleware
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    return await log_requests_middleware(request, call_next, RedisManager, user_manager, csv_db)
 
 app.add_middleware(
     CORSMiddleware,
@@ -116,41 +149,49 @@ print(f"REDIRECT_BASE_URL: {REDIRECT_BASE_URL}\n")
 
 @app.get("/")
 async def root():
+    log_api_start("ROOT", "Health check endpoint")
     return {"message": "Gmail Email Composer API"}
 
 @app.post("/api/authenticate-gmail")
 async def start_gmail_auth(auth_request: GmailAuthRequest):
+    log_api_start("GMAIL AUTH", f"Auth State: {auth_request.auth_state}")
     try:
         # Get auth state from request body
         frontend_auth_state = auth_request.auth_state
         
         if not frontend_auth_state:
+            api_logger.error(f"❌ GMAIL AUTH ERROR - Missing auth_state parameter")
             return JSONResponse(
                 status_code=400,
                 content={"error": "Missing auth_state parameter"}
             )
         
         if not os.path.exists(CREDENTIALS_FILE):
+            api_logger.error(f"❌ GMAIL AUTH ERROR - Credentials file not found: {CREDENTIALS_FILE}")
             return JSONResponse(
                 status_code=500,
                 content={"error": "Credentials file not found"}
             )
 
         redirect_uri = f"{REDIRECT_BASE_URL}/auth/callback"
+        api_logger.info(f"🔄 GMAIL AUTH - Setting redirect URI: {redirect_uri}")
 
         flow = Flow.from_client_secrets_file(
             CREDENTIALS_FILE,
             scopes=SCOPES,
             redirect_uri=redirect_uri
         )
+        api_logger.info(f"🔄 GMAIL AUTH - OAuth flow created with scopes: {SCOPES}")
 
         # Use frontend auth state as OAuth state parameter
         # Also store it in Redis to track the auth flow
         if not RedisManager.store_oauth_state(frontend_auth_state, expiry_minutes=10):
+            api_logger.error(f"❌ GMAIL AUTH ERROR - Failed to store OAuth state in Redis")
             return JSONResponse(
                 status_code=500,
                 content={"error": "Failed to store OAuth state"}
             )
+        api_logger.info(f"✅ GMAIL AUTH - OAuth state stored in Redis for 10 minutes")
 
         authorization_url, _ = flow.authorization_url(
             access_type='offline',
@@ -162,10 +203,16 @@ async def start_gmail_auth(auth_request: GmailAuthRequest):
         print("🔐 Redirect URI used for auth:", redirect_uri)   
         print("🔗 Frontend auth state:", frontend_auth_state)
         print("🔗 Full Authorization URL:", authorization_url)
+        
+        api_logger.info(f"✅ GMAIL AUTH SUCCESS - Authorization URL generated")
+        api_logger.info(f"🔗 GMAIL AUTH - Redirect URI: {redirect_uri}")
+        api_logger.info(f"🔗 GMAIL AUTH - Auth State: {frontend_auth_state}")
 
         return {"authorization_url": authorization_url}
     
     except Exception as e:
+        api_logger.error(f"❌ GMAIL AUTH EXCEPTION - {str(e)}")
+        print(f"Gmail auth error: {str(e)}")
         return JSONResponse(
             status_code=500,
             content={"error": f"Failed to start authentication: {str(e)}"}
@@ -175,6 +222,7 @@ async def start_gmail_auth(auth_request: GmailAuthRequest):
 @app.get("/auth/callback")
 async def auth_callback(request: Request):
     """Handle OAuth callback and store authentication data in Redis"""
+    log_api_start("AUTH CALLBACK", "OAuth callback processing")
     try:
         code = request.query_params.get('code')
         state = request.query_params.get('state')
@@ -322,6 +370,7 @@ async def auth_callback(request: Request):
 @app.get("/api/check-auth")
 async def check_auth(request: Request):
     """Check authentication status using Redis for session management"""
+    log_api_start("CHECK AUTH", "Authentication status check")
     try:
         # Get session_id from headers if provided
         session_id = request.headers.get('X-Session-ID')
@@ -508,6 +557,7 @@ async def check_auth(request: Request):
 @app.get("/api/auth-status/{auth_state_id}")
 async def check_auth_status_by_state(auth_state_id: str):
     """Check authentication status using auth state ID for polling"""
+    log_api_start("AUTH STATUS", f"Checking status for auth_state_id: {auth_state_id}")
     try:
         print(f"DEBUG: Checking auth status for state: {auth_state_id}")
         
@@ -630,6 +680,11 @@ async def check_auth_status_by_state(auth_state_id: str):
 @app.post("/api/generate-email", response_model=MultipleEmailGenerationResponse)
 async def generate_email(request: EmailGenerationParams):
     """Generate multiple emails based on provided mail types and parameters"""
+    api_logger.info(f"📝 EMAIL GENERATION START - Mail Types: {request.mail_types}")
+    api_logger.info(f"📝 EMAIL GENERATION - Tone: {request.tone}")
+    api_logger.info(f"📝 EMAIL GENERATION - Description: {request.description[:100]}...")
+    api_logger.info(f"📝 EMAIL GENERATION - User Details: Name={request.user_name}, Company={request.user_company}")
+    
     print(f"PARAMS: {request.tone}\n{request.mail_types}\n{request.description}\n{request.additional_requirements}")
     try:
         mail_types = request.mail_types
@@ -638,6 +693,7 @@ async def generate_email(request: EmailGenerationParams):
         additional_requirements = request.additional_requirements
         
         print(f"[DEBUG] Starting email generation for mail types: {mail_types}")
+        api_logger.info(f"🔄 EMAIL GENERATION - Calling LLM service for {len(mail_types)} email types")
         
         # Generate multiple emails using studio.py
         generated_emails = await generate_multiple_emails(
@@ -653,6 +709,11 @@ async def generate_email(request: EmailGenerationParams):
         )
         
         print(f"[DEBUG] Successfully generated {len(generated_emails)} emails")
+        api_logger.info(f"✅ EMAIL GENERATION SUCCESS - Generated {len(generated_emails)} emails")
+        
+        # Log email titles for tracking
+        for mail_type, content in generated_emails.items():
+            api_logger.info(f"📧 EMAIL GENERATED - {mail_type}: '{content.subject[:50]}...'")
         
         return MultipleEmailGenerationResponse(
             success=True,
@@ -662,12 +723,15 @@ async def generate_email(request: EmailGenerationParams):
         
     except Exception as e:
         print(f"[ERROR] Failed to generate emails: {str(e)}")
+        api_logger.error(f"❌ EMAIL GENERATION ERROR - {str(e)}")
+        api_logger.error(f"❌ EMAIL GENERATION - Mail Types: {mail_types}, Tone: {tone}")
         raise HTTPException(status_code=500, detail=f"Failed to generate emails: {str(e)}")
 
 
 @app.post("/api/refine-email", response_model=EmailGenerationResponse)
 async def refine_email(request: RefineEmailRequest):
     """Refine email content based on user instructions"""
+    log_api_start("REFINE EMAIL", f"Subject: '{request.original_subject[:50]}...', Instructions: '{request.refinement_instructions[:50]}...'")
     print(f"REFINE EMAIL PARAMS: Original Subject: {request.original_subject[:50]}...")
     print(f"Refinement Instructions: {request.refinement_instructions}")
     
@@ -696,20 +760,31 @@ async def send_email(
     request: Request,
     x_session_id: Optional[str] = Header(None, alias="X-Session-ID")
 ):
+    log_api_start("EMAIL SEND", f"Recipients: {len(email_request.to)}, Subject: '{email_request.subject[:50]}...'", x_session_id)
     try:
         if not x_session_id:
+            api_logger.error(f"❌ EMAIL SEND ERROR - No session ID provided")
             raise HTTPException(status_code=401, detail="No session ID provided. Please authenticate first.")
 
         # 1. Retrieve credentials
         credentials = None
         user_info = None
         token_file = user_manager.get_user_token_file(x_session_id)
+        api_logger.info(f"🔄 EMAIL SEND - Retrieving user token file: {token_file}")
 
         if token_file:
             user_data = user_manager.get_user_info_from_token_file(token_file)
             if user_data and user_data.get('profile_complete'):
                 credentials = Credentials.from_authorized_user_info(user_data['credentials'], SCOPES)
                 user_info = user_data
+                
+                # Extract user email for logging if available
+                user_email = None
+                if user_info and 'user_info' in user_info and 'email' in user_info['user_info']:
+                    user_email = user_info['user_info']['email']
+                    print(f"DEBUG: EMAIL SEND - Found user email: {user_email}")
+                    # Re-log with user email
+                    log_api_start("EMAIL SEND", f"Recipients: {len(email_request.to)}, Subject: '{email_request.subject[:50]}...', User: {user_email}", x_session_id, user_email)
 
         if not credentials:
             auth_data = RedisManager.get_session_data(x_session_id)
@@ -746,9 +821,10 @@ async def send_email(
 @app.post("/api/register-user", response_model=UserRegistrationResponse)
 async def register_user(data: UserData, request: Request):
     """Register user with profile data and create permanent token file"""
+    session_id = request.headers.get('X-Session-ID')
+    log_api_start("USER REGISTRATION", f"Company: {data.company_name}, Designation: {data.designation}", session_id)
     try:
-        # Get session_id from request headers
-        session_id = request.headers.get('X-Session-ID')
+        # Get session_id from request headers  
         print(f"DEBUG: Received session_id: {session_id}")
         
         if not session_id:
@@ -828,6 +904,7 @@ async def register_user(data: UserData, request: Request):
 @app.delete("/api/logout", response_model=LogoutResponse)
 async def logout(request: Request):
     """Logout and remove stored credentials"""
+    log_api_start("LOGOUT", "User logout request")
     try:
         # Get session_id from headers
         session_id = request.headers.get('X-Session-ID')
@@ -863,18 +940,24 @@ async def fetch_leads_v3(
     """
     Fetch leads based on search criteria - Version 3 (Clean response)
     """
+    log_api_start("LEAD SEARCH", f"Job Titles: {request.job_titles}, Companies: {request.company_names}", x_session_id)
     try:
         print(f"Received lead search request: {request}")
         print(f"Session ID: {x_session_id}")
 
+        api_logger.info(f"🔄 LEAD SEARCH - Calling lead_finder service")
         leads = lead_finder.fetch_leads(request)
         num_leads=0
         if leads:
             num_leads=len(leads)
         else:
             num_leads=0
+        
+        api_logger.info(f"✅ LEAD SEARCH SUCCESS - Found {num_leads} leads")
+        
         ICP_payload=lead_finder.generate_dynamic_icp_query(request)
         filtered_leads=lead_finder.filter_profiles(leads_data=leads)
+        api_logger.info(f"🔄 LEAD SEARCH - Filtered to {len(filtered_leads) if filtered_leads else 0} qualified leads")
         # Only include non-empty search criteria in response
         search_criteria = {}
         request_dict = request.dict()
@@ -928,6 +1011,7 @@ async def fetch_leads_v3(
 
     except Exception as e:
         print(f"Error in fetch_leads: {str(e)}")
+        log_api_error("LEAD SEARCH", str(e), f"Session: {x_session_id}", x_session_id)
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 
@@ -938,6 +1022,7 @@ async def get_search_history(
     x_session_id: Optional[str] = Header(None, alias="X-Session-ID")
 ):
     """Get user's search history"""
+    log_api_start("GET SEARCH HISTORY", f"limit={limit}, session_id={x_session_id}")
     print(f"\n🔍 API CALL: GET_SEARCH_HISTORY")
     print(f"📝 Parameters: limit={limit}, session_id={x_session_id}")
     
@@ -997,6 +1082,7 @@ async def get_search_by_id(
     x_session_id: Optional[str] = Header(None, alias="X-Session-ID")
 ):
     """Get specific search by ID"""
+    log_api_start("GET SEARCH BY ID", f"search_id={search_id}, session_id={x_session_id}")
     print(f"\n🔍 API CALL: GET_SEARCH_BY_ID")
     print(f"📝 Parameters: search_id={search_id}, session_id={x_session_id}")
     
@@ -1057,6 +1143,7 @@ async def delete_search_history(
     x_session_id: Optional[str] = Header(None, alias="X-Session-ID")
 ):
     """Delete specific search from history"""
+    log_api_start("DELETE SEARCH HISTORY", f"search_id={search_id}, session_id={x_session_id}")
     print(f"\n🗑️ API CALL: DELETE_SEARCH_HISTORY")
     print(f"📝 Parameters: search_id={search_id}, session_id={x_session_id}")
     
@@ -1112,6 +1199,7 @@ async def delete_search_history(
 @app.post("/api/change-profile", response_model=UserProfileUpdateResponse)
 async def change_profile(data: UserProfileUpdateRequest, request: Request):
     """Update user profile information"""
+    log_api_start("CHANGE PROFILE", f"company={data.company_name}, designation={data.designation}")
     try:
         # Get session_id from request headers
         session_id = request.headers.get('X-Session-ID')
@@ -1200,6 +1288,7 @@ async def change_profile(data: UserProfileUpdateRequest, request: Request):
 @app.delete("/api/delete-profile", response_model=UserDeleteResponse)
 async def delete_profile(request: Request):
     """Delete user profile (mark as deleted in CSV)"""
+    log_api_start("DELETE PROFILE", "User profile deletion request")
     try:
         # Get session_id from request headers
         session_id = request.headers.get('X-Session-ID')
@@ -1263,6 +1352,7 @@ async def delete_profile(request: Request):
 @app.get("/api/user-stats", response_model=UserStatsResponse)
 async def get_user_stats(request: Request):
     """Get user statistics from CSV database"""
+    log_api_start("GET USER STATS", "User statistics request")
     try:
         # Get session_id from request headers
         session_id = request.headers.get('X-Session-ID')
@@ -1313,6 +1403,7 @@ async def get_user_stats(request: Request):
 @app.get("/api/prospects-lists", response_model=ProspectsListResponse)
 async def get_prospects_lists(request: Request):
     """Get all prospects lists for the authenticated user"""
+    log_api_start("GET PROSPECTS LISTS", "Fetching user prospects lists")
     try:
         # Get session_id from request headers
         session_id = request.headers.get('X-Session-ID')
@@ -1363,6 +1454,7 @@ async def get_prospects_lists(request: Request):
 @app.post("/api/prospects-lists", response_model=CreateProspectsListResponse)
 async def create_prospects_list(prospects_request: CreateProspectsListRequest, request: Request):
     """Create a new prospects list"""
+    log_api_start("CREATE PROSPECTS LIST", f"list_name={prospects_request.list_name}")
     try:
         # Get session_id from request headers
         session_id = request.headers.get('X-Session-ID')
@@ -1756,6 +1848,7 @@ async def add_custom_lead_to_list(list_id: str, add_custom_lead_request: AddCust
 @app.get("/api/mail-sessions", response_model=MailListsResponse)
 async def get_mail_lists(request: Request):
     """Get all mail composition lists for the authenticated user"""
+    log_api_start("GET MAIL SESSIONS", "Fetching mail composition lists")
     try:
         print(f"\n📧 API REQUEST: GET_MAIL_LISTS")
         
@@ -2192,6 +2285,7 @@ async def update_all_session_templates(session_id: str, request: Request):
 @app.get("/api/campaigns", response_model=CampaignsResponse)
 async def get_campaigns(request: Request):
     """Get all campaigns for the authenticated user"""
+    log_api_start("GET CAMPAIGNS")
     try:
         print(f"\n📋 API REQUEST: GET_CAMPAIGNS")
         
@@ -2226,6 +2320,7 @@ async def get_campaigns(request: Request):
         campaigns = campaign_manager.get_user_campaigns(user_email)
         
         print(f"✅ Retrieved {len(campaigns)} campaigns for {user_email}")
+        log_api_success("GET CAMPAIGNS", f"Retrieved {len(campaigns)} campaigns for {user_email}")
         
         return {
             "success": True,
@@ -2238,11 +2333,13 @@ async def get_campaigns(request: Request):
         raise
     except Exception as e:
         print(f"❌ Error getting campaigns: {str(e)}")
+        log_api_error("GET CAMPAIGNS", str(e))
         raise HTTPException(status_code=500, detail=f"Failed to get campaigns: {str(e)}")
 
 @app.post("/api/campaigns", response_model=CreateCampaignResponse)
 async def create_campaign(create_campaign_request: CreateCampaignRequest, request: Request):
     """Create a new campaign"""
+    log_api_start("CREATE CAMPAIGN", f"campaign_name={create_campaign_request.campaign_name}")
     try:
         print(f"\n➕ API REQUEST: CREATE_CAMPAIGN")
         
